@@ -9,7 +9,6 @@
 *.pot
 
 # App-specific ignore patterns
-/*
 !/ofxVideoRecorderExample
 /ofxVideoRecorderExample/*
 !/ofxVideoRecorderExample/src
