@@ -77,6 +77,7 @@ class ofxVideoRecorder
 {
 public:
 	ofxVideoRecorder();
+	ofxVideoRecorder(size_t maxFrames);
 
     ofEvent<ofxVideoRecorderOutputFileCompleteEventArgs> outputFileCompleteEvent;
 

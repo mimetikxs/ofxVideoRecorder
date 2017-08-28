@@ -207,6 +207,20 @@ ofxVideoRecorder::ofxVideoRecorder(){
     outputPixelFormat = "";
 }
 
+ofxVideoRecorder::ofxVideoRecorder(size_t maxFrames)
+:frames(maxFrames)
+,audioFrames(maxFrames)
+{
+	bIsInitialized = false;
+	ffmpegLocation = "ffmpeg";
+	videoCodec = "mpeg4";
+	audioCodec = "pcm_s16le";
+	videoBitrate = "2000k";
+	audioBitrate = "128k";
+	pixelFormat = "rgb24";
+	outputPixelFormat = "";
+}
+
 //--------------------------------------------------------------
 bool ofxVideoRecorder::setup(string fname, int w, int h, float fps, int sampleRate, int channels, bool sysClockSync, bool silent){
     if(bIsInitialized)
