@@ -464,6 +464,10 @@ void ofxVideoRecorder::setPaused(bool bPause){
 void ofxVideoRecorder::close(){
     if(!bIsInitialized) return;
 
+	while(!frames.empty() || !audioFrames.empty()){
+		ofSleepMillis(100);
+	}
+
     bIsRecording = false;
 
 	outputFileComplete();
