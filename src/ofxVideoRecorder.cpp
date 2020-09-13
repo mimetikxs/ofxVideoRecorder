@@ -53,13 +53,13 @@ void execThread::setup(string command){
 //--------------------------------------------------------------
 void execThread::threadedFunction(){
     if(isThreadRunning()){
-        ofLogVerbose("execThread") << "starting command: " <<  execCommand;
+        ofLogVerbose(__FUNCTION__) << "Starting command: " <<  execCommand;
         int result = system(execCommand.c_str());
         if (result == 0) {
-            ofLogVerbose("execThread") << "command completed successfully.";
+            ofLogVerbose(__FUNCTION__) << "Command completed successfully.";
             initialized = true;
         } else {
-            ofLogError("execThread") << "command failed with result: " << result;
+            ofLogError(__FUNCTION__) << "Command failed with result: " << result;
         }
     }
 }
@@ -71,9 +71,9 @@ ofxVideoDataWriterThread::ofxVideoDataWriterThread(){
 
 //--------------------------------------------------------------
 #if defined(TARGET_OSX) || defined(TARGET_LINUX)
-void ofxVideoDataWriterThread::setup(string filePath, ofThreadChannel<ofPixels> * q)
+void ofxVideoDataWriterThread::setup(string filePath, std::shared_ptr<ofThreadChannel<ofPixels>> q)
 #elif defined(TARGET_WIN32)
-void ofxVideoDataWriterThread::setup(HANDLE pipeHandle, ofThreadChannel<ofPixels>* q)
+void ofxVideoDataWriterThread::setup(HANDLE pipeHandle, std::shared_ptr<ofThreadChannel<ofPixels>> q)
 #endif
 {
 #if defined(TARGET_OSX) || defined(TARGET_LINUX)
@@ -94,9 +94,9 @@ void ofxVideoDataWriterThread::threadedFunction()
 {
 #if defined(TARGET_OSX) || defined(TARGET_LINUX)
     if(fd == -1){
-        ofLogVerbose("ofxVideoDataWriterThread") << "opening pipe: " <<  filePath;
+        ofLogVerbose(__FUNCTION__) << "Opening pipe: " <<  filePath;
         fd = ::open(filePath.c_str(), O_WRONLY);
-        ofLogWarning("ofxVideoDataWriterThread") << "got file descriptor " << fd;
+        ofLogWarning(__FUNCTION__) << "Got file descriptor " << fd;
     }
 #endif
 
@@ -133,7 +133,7 @@ void ofxVideoDataWriterThread::threadedFunction()
                     NULL);   // arguments - see note 
                 //wstring ws = errorText;
                 string error(errorText);
-                ofLogNotice("Video Thread") << "WriteFile to pipe failed: " << error;
+                ofLogError(__FUNCTION__) << "WriteFile to pipe failed: " << error;
                 break;
             }
 #endif
@@ -188,9 +188,9 @@ ofxAudioDataWriterThread::ofxAudioDataWriterThread(){
 
 //--------------------------------------------------------------
 #if defined(TARGET_OSX) || defined(TARGET_LINUX)
-void ofxAudioDataWriterThread::setup(string filePath, ofThreadChannel<audioFrameShort *> *q)
+void ofxAudioDataWriterThread::setup(string filePath, std::shared_ptr<ofThreadChannel<audioFrameShort*>> q)
 #elif defined(TARGET_WIN32)
-void ofxAudioDataWriterThread::setup(HANDLE pipeHandle, ofThreadChannel<audioFrameShort*>* q)
+void ofxAudioDataWriterThread::setup(HANDLE pipeHandle, std::shared_ptr<ofThreadChannel<audioFrameShort*>> q)
 #endif
 {
 #if defined(TARGET_OSX) || defined(TARGET_LINUX)
@@ -387,6 +387,8 @@ bool ofxVideoRecorder::setup(ofxVideoRecorderSettings inSettings)
     {
         // Recording video, create a FIFO pipe.
 
+        videoFrames = std::make_shared<ofThreadChannel<ofPixels>>();
+
 #if defined(TARGET_OSX) || defined(TARGET_LINUX)
 
         videoPipePath = "";
@@ -432,6 +434,9 @@ bool ofxVideoRecorder::setup(ofxVideoRecorderSettings inSettings)
     if (settings.audioEnabled) {
         
         // Recording audio, create a FIFO pipe.
+
+        audioFrames = std::make_shared<ofThreadChannel<audioFrameShort*>>();
+
 #if defined(TARGET_OSX) || defined(TARGET_LINUX)
 
         audioPipePath = ofFilePath::getAbsolutePath("ofxarpipe" + ofToString(pipeNumber));
@@ -570,7 +575,7 @@ bool ofxVideoRecorder::setup(ofxVideoRecorderSettings inSettings)
         else 
         {
             ofLogNotice(__FUNCTION__) << "Audio pipe connected successfully.";
-            audioThread.setup(audioPipeHandle, &audioFrames);
+            audioThread.setup(audioPipeHandle, audioFrames);
         }
 
         // Video Thread
@@ -615,7 +620,7 @@ bool ofxVideoRecorder::setup(ofxVideoRecorderSettings inSettings)
         else 
         {
             ofLogNotice(__FUNCTION__) << "Video pipe connected successfully.";
-            videoThread.setup(videoPipeHandle, &frames);
+            videoThread.setup(videoPipeHandle, videoFrames);
         }
     }
     else 
@@ -685,7 +690,7 @@ bool ofxVideoRecorder::setup(ofxVideoRecorderSettings inSettings)
             else
             {
                 ofLogNotice(__FUNCTION__) << "Audio pipe connected successfully.";
-                audioThread.setup(audioPipeHandle, &audioFrames);
+                audioThread.setup(audioPipeHandle, audioFrames);
             }
         }
 
@@ -717,7 +722,7 @@ bool ofxVideoRecorder::setup(ofxVideoRecorderSettings inSettings)
             else
             {
                 ofLogNotice(__FUNCTION__) << "Video pipe connected successfully.";
-                videoThread.setup(videoPipeHandle, &frames);
+                videoThread.setup(videoPipeHandle, videoFrames);
             }
         }
     }
@@ -784,7 +789,7 @@ bool ofxVideoRecorder::addFrame(const ofPixels &pixels)
         for (int i = 0; i < framesToAdd; ++i)
         {
             // Add desired number of frames
-			frames.send(pixels);
+			videoFrames->send(pixels);
             ++videoFramesRecorded;
 		}
 
@@ -808,9 +813,9 @@ void ofxVideoRecorder::addAudioSamples(float *samples, int bufferSize, int numCh
 
         for (int i = 0; i < size; ++i) 
         {
-            shortSamples->data[i] = (short)(samples[i] * 32767.0f);
+            shortSamples->data[i] = static_cast<short>(samples[i] * 32767.0f);
         }
-        audioFrames.send(shortSamples);
+        audioFrames->send(shortSamples);
         audioSamplesRecorded += size;
     }
 }
@@ -857,12 +862,13 @@ void ofxVideoRecorder::close()
 {
     if(!bIsInitialized) return;
 
-    while (!frames.empty() || !audioFrames.empty())
+    bIsRecording = false;
+
+    while ((!settings.videoEnabled || !videoFrames->empty()) 
+        || (!settings.audioEnabled || !audioFrames->empty()))
     {
 		ofSleepMillis(100);
 	}
-
-    bIsRecording = false;
 
     ofLogVerbose(__FUNCTION__) << "Close recording.";
 
@@ -882,10 +888,12 @@ void ofxVideoRecorder::outputFileComplete()
     if (settings.videoEnabled)
     {
         videoThread.close();
+        videoFrames.reset();
     }
     if (settings.audioEnabled)
     {
         audioThread.close();
+        audioFrames.reset();
     }
 
 #if defined(TARGET_WIN32)
@@ -920,10 +928,10 @@ void ofxVideoRecorder::outputFileComplete()
 
         system(mergeCmd.str().c_str());
 
-        //std::stringstream delCmd;
-        //ofStringReplace(moviePath, "/", "\\");
-        //delCmd << "DEL \"" << moviePath << "_atmp" << settings.audioFileExt << "\" \"" << moviePath << "_vtmp" << settings.videoFileExt << "\"";
-        //system(delCmd.str().c_str());
+        std::stringstream delCmd;
+        ofStringReplace(moviePath, "/", "\\");
+        delCmd << "DEL \"" << moviePath << "_atmp" << settings.audioFileExt << "\" \"" << moviePath << "_vtmp" << settings.videoFileExt << "\"";
+        system(delCmd.str().c_str());
     }
 
 #endif

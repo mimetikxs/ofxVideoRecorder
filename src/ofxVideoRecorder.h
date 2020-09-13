@@ -32,9 +32,9 @@ class ofxVideoDataWriterThread : public ofThread {
 public:
     ofxVideoDataWriterThread();
 #if defined(TARGET_OSX) || defined(TARGET_LINUX)
-	void setup(string filePath, ofThreadChannel<ofPixels> * q);
+	void setup(string filePath, std::shared_ptr<ofThreadChannel<ofPixels>> q);
 #elif defined(TARGET_WIN32)
-    void setup(HANDLE pipeHandle, ofThreadChannel<ofPixels>* q);
+    void setup(HANDLE pipeHandle, std::shared_ptr<ofThreadChannel<ofPixels>> q);
 #endif
 	void threadedFunction();
     void setPipeNonBlocking();
@@ -48,7 +48,7 @@ private:
     HANDLE fileHandle;
 #endif
     int fd;
-	ofThreadChannel<ofPixels> * queue;
+    std::shared_ptr<ofThreadChannel<ofPixels>> queue;
     bool bIsWriting;
     bool bClose;
 };
@@ -59,9 +59,9 @@ class ofxAudioDataWriterThread : public ofThread {
 public:
     ofxAudioDataWriterThread();
 #if defined(TARGET_OSX) || defined(TARGET_LINUX)
-    void setup(string filePath, ofThreadChannel<audioFrameShort *> * q);
+    void setup(string filePath, std::shared_ptr<ofThreadChannel<audioFrameShort *>> q);
 #elif defined(TARGET_WIN32)
-    void setup(HANDLE pipeHandle, ofThreadChannel<audioFrameShort *> * q);
+    void setup(HANDLE pipeHandle, std::shared_ptr<ofThreadChannel<audioFrameShort *>> q);
 #endif
 	void threadedFunction();
     void setPipeNonBlocking();
@@ -75,7 +75,7 @@ private:
     HANDLE fileHandle;
 #endif
     int fd;
-	ofThreadChannel<audioFrameShort *> * queue;
+    std::shared_ptr<ofThreadChannel<audioFrameShort *>> queue;
     bool bIsWriting;
     bool bClose;
 };
@@ -204,8 +204,8 @@ private:
     float totalRecordingDuration;
     float systemClock();
 
-	ofThreadChannel<ofPixels> frames;
-	ofThreadChannel<audioFrameShort *> audioFrames;
+    std::shared_ptr<ofThreadChannel<ofPixels>> videoFrames;
+    std::shared_ptr<ofThreadChannel<audioFrameShort*>> audioFrames;
     unsigned long long audioSamplesRecorded;
     unsigned long long videoFramesRecorded;
     ofxVideoDataWriterThread videoThread;
