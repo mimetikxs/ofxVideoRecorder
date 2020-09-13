@@ -131,7 +131,6 @@ void ofxVideoDataWriterThread::threadedFunction()
                     (LPTSTR)&errorText,  // output 
                     0, // minimum size for output buffer
                     NULL);   // arguments - see note 
-                //wstring ws = errorText;
                 string error(errorText);
                 ofLogError(__FUNCTION__) << "WriteFile to pipe failed: " << error;
                 break;
@@ -244,7 +243,6 @@ void ofxAudioDataWriterThread::threadedFunction()
                     (LPTSTR)&errorText,  // output 
                     0, // minimum size for output buffer
                     NULL);   // arguments - see note 
-                //wstring ws = errorText;
                 string error(errorText);
                 ofLogNotice("Audio Thread") << "WriteFile to pipe failed: " << error;
             }
@@ -316,19 +314,12 @@ ofxVideoRecorderSettings::ofxVideoRecorderSettings()
 
 //--------------------------------------------------------------
 //--------------------------------------------------------------
-ofxVideoRecorder::ofxVideoRecorder(){
-    bIsInitialized = false;
-    //ffmpegLocation = "ffmpeg";
-    //videoCodec = "mpeg4";
-    //audioCodec = "pcm_s16le";
-    //videoBitrate = "2000k";
-    //audioBitrate = "128k";
-    //pixelFormat = "rgb24";
-    //outputPixelFormat = "";
-    //videoFileExt = ".mp4";
-    //audioFileExt = ".m4a";
-    aThreadRunning = false;
-    vThreadRunning = false;
+ofxVideoRecorder::ofxVideoRecorder()
+    : bIsInitialized(false)
+    , bIsRecording(false)
+    , bIsPaused(false)
+{ 
+
 }
 
 bool ofxVideoRecorder::setup(std::string filename, int videoWidth, int videoHeight, float videoFps, bool sysClockSync, bool ffmpegSilent)
@@ -367,8 +358,6 @@ bool ofxVideoRecorder::setup(ofxVideoRecorderSettings inSettings)
     {
         close();
     }
-
-    bFinishing = false;
 
     videoFramesRecorded = 0;
     audioSamplesRecorded = 0;
@@ -568,7 +557,6 @@ bool ofxVideoRecorder::setup(ofxVideoRecorderSettings inSettings)
                 (LPTSTR)&errorText,  // output 
                 0, // minimum size for output buffer
                 NULL);   // arguments - see note 
-            //wstring ws = errorText;
             std::string error(errorText);
             ofLogError(__FUNCTION__) << "Audio ConnectNamedPipe() failed: " << error;
         }
@@ -613,7 +601,6 @@ bool ofxVideoRecorder::setup(ofxVideoRecorderSettings inSettings)
                 (LPTSTR)&errorText,  // output 
                 0, // minimum size for output buffer
                 NULL);   // arguments - see note 
-            //wstring ws = errorText;
             string error(errorText);
             ofLogError(__FUNCTION__) << "Video ConnectNamedPipe() failed: " << error;
         }
@@ -683,7 +670,6 @@ bool ofxVideoRecorder::setup(ofxVideoRecorderSettings inSettings)
                     (LPTSTR)&errorText,  // output 
                     0, // minimum size for output buffer
                     NULL);   // arguments - see note 
-                //wstring ws = errorText;
                 string error(errorText);
                 ofLogError(__FUNCTION__) << "Audio ConnectNamedPipe() failed: " << error;
             }
@@ -715,7 +701,6 @@ bool ofxVideoRecorder::setup(ofxVideoRecorderSettings inSettings)
                     (LPTSTR)&errorText,  // output 
                     0, // minimum size for output buffer
                     NULL);   // arguments - see note 
-                //wstring ws = errorText;
                 string error(errorText);
                 ofLogError(__FUNCTION__) << "Video ConnectNamedPipe() failed: " << error;
             }
@@ -749,7 +734,7 @@ bool ofxVideoRecorder::addFrame(const ofPixels &pixels)
 	{
         int framesToAdd = 1; // default add one frame per request
 
-        if ((settings.audioEnabled || settings.sysClockSync) && !bFinishing)
+        if ((settings.audioEnabled || settings.sysClockSync))
         {
             double syncDelta;
             double videoRecordedTime = videoFramesRecorded / settings.videoFps;
@@ -898,26 +883,14 @@ void ofxVideoRecorder::outputFileComplete()
 
 #if defined(TARGET_WIN32)
 
-    //at this point all data that ffmpeg wants should have been consumed
-    // one of the threads may still be trying to write a frame,
-    // but once close() gets called they will exit the non_blocking write loop
-    // and hopefully close successfully
-
     if (settings.audioEnabled && settings.videoEnabled)
     {
         ffmpegAudioThread.waitForThread();
         ffmpegVideoThread.waitForThread();
 
-        //need to do one last script here to join the audio and video recordings
+        // Merge the audio and video recordings.
 
         std::stringstream mergeCmd;
-
-        /*finalCmd << ffmpegLocation << " -y " << " -i " << filePath << "_vtemp" << movFileExt << " -i " << filePath << "_atemp" << movFileExt << " \\ ";
-        finalCmd << "-filter_complex \"[0:0] [1:0] concat=n=2:v=1:a=1 [v] [a]\" \\";
-        finalCmd << "-map \"[v]\" -map \"[a]\" ";
-        finalCmd << " -vcodec " << videoCodec << " -b:v " << videoBitrate << " -b:a " << audioBitrate << " ";
-        finalCmd << filePath << movFileExt;*/
-
         mergeCmd << settings.ffmpegPath << (settings.ffmpegSilent ? " -loglevel quiet" : "") << " -y"
             << " -i \"" << moviePath << "_atmp" << settings.audioFileExt << "\""
             << " -i \"" << moviePath << "_vtmp" << settings.videoFileExt << "\""
@@ -939,6 +912,7 @@ void ofxVideoRecorder::outputFileComplete()
     retirePipeNumber(pipeNumber);
 
     ffmpegThread.waitForThread();
+    
     // TODO: kill ffmpeg process if its taking too long to close for whatever reason.
 
     // Notify the listeners.
@@ -979,8 +953,10 @@ int ofxVideoRecorder::requestPipeNumber()
 }
 
 //--------------------------------------------------------------
-void ofxVideoRecorder::retirePipeNumber(int num){
-    if(!openPipes.erase(num)){
-        ofLogNotice() << "ofxVideoRecorder::retirePipeNumber(): trying to retire a pipe number that is not being tracked: " << num << endl;
+void ofxVideoRecorder::retirePipeNumber(int num)
+{
+    if(!openPipes.erase(num))
+    {
+        ofLogNotice(__FUNCTION__) << "Trying to retire pipe number " << num << " but it's not being tracked.";
     }
 }

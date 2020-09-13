@@ -138,10 +138,6 @@ public:
     bool setup(std::string filename, int videoWidth, int videoHeight, float videoFps, int audioSampleRate, int audioChannels, bool sysClockSync = false, bool ffmpegSilent = false);
     bool setup(ofxVideoRecorderSettings settings = ofxVideoRecorderSettings());
 
-    //bool setup(string fname, int w, int h, float fps, int sampleRate=0, int channels=0, bool sysClockSync=false, bool silent=false);
-    //bool setupCustomOutput(int w, int h, float fps, string outputString, bool sysClockSync=false, bool silent=false);
-    //bool setupCustomOutput(int w, int h, float fps, int sampleRate, int channels, string outputString, bool sysClockSync=false, bool silent=false);
-
     bool addFrame(const ofPixels &pixels);
     void addAudioSamples(float * samples, int bufferSize, int numChannels);
 
@@ -152,19 +148,6 @@ public:
     bool hasVideoError();
     bool hasAudioError();
 
-    //void setFfmpegLocation(string loc) { ffmpegLocation = loc; }
-    //void setVideoCodec(string codec) { videoCodec = codec; }
-    //void setAudioCodec(string codec) { audioCodec = codec; }
-    //void setVideoBitrate(string bitrate) { videoBitrate = bitrate; }
-    //void setAudioBitrate(string bitrate) { audioBitrate = bitrate; }
-
-    //void setPixelFormat( string pixelF){ //rgb24 || gray, default is rgb24
-    //    pixelFormat = pixelF;
-    //};
-    //void setOutputPixelFormat(string pixelF) {
-    //    outputPixelFormat = pixelF;
-    //}
-
     unsigned long long getNumVideoFramesRecorded() { return videoFramesRecorded; }
     unsigned long long getNumAudioSamplesRecorded() { return audioSamplesRecorded; }
 
@@ -173,26 +156,18 @@ public:
     bool isPaused() { return bIsPaused; };
     bool isSyncAgainstSysClock() { return bSysClockSync; };
 
-    string getMoviePath(){ return moviePath; }
+    std::string getMoviePath(){ return moviePath; }
     int getWidth(){return settings.videoWidth;}
     int getHeight(){return settings.videoHeight;}
 
 private:
     ofxVideoRecorderSettings settings;
 
-    //string fileName;
-    string moviePath;
-    //string videoFileExt;
-    //string audioFileExt;
-    string videoPipePath, audioPipePath;
-    //string ffmpegLocation;
-    //string videoCodec, audioCodec, videoBitrate, audioBitrate, pixelFormat, outputPixelFormat;
-    //int width, height, sampleRate, audioChannels;
-    //float frameRate;
+    std::string moviePath;
+    std::string videoPipePath;
+    std::string audioPipePath;
 
     bool bIsInitialized;
-    //bool bRecordAudio;
-    //bool bRecordVideo;
     bool bIsRecording;
     bool bIsPaused;
     bool bFinishing;
@@ -253,8 +228,6 @@ private:
 
     HANDLE videoPipeHandle;
     HANDLE audioPipeHandle;
-    //LPCTSTR videoPipePath;
-    //LPCTSTR audioPipePath;
 
 #endif
 
