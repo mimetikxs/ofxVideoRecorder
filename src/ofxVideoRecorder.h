@@ -170,8 +170,6 @@ private:
     bool bIsInitialized;
     bool bIsRecording;
     bool bIsPaused;
-    bool bFinishing;
-    bool bIsSilent;
 
     bool bSysClockSync;
     float startTime;

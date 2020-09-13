@@ -849,8 +849,8 @@ void ofxVideoRecorder::close()
 
     bIsRecording = false;
 
-    while ((!settings.videoEnabled || !videoFrames->empty()) 
-        || (!settings.audioEnabled || !audioFrames->empty()))
+    while ((settings.videoEnabled && !videoFrames->empty()) 
+        || (settings.audioEnabled && !audioFrames->empty()))
     {
 		ofSleepMillis(100);
 	}

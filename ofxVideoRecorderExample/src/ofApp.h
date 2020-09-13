@@ -22,14 +22,12 @@ public:
     void gotMessage(ofMessage msg);
     void audioIn(float * input, int bufferSize, int nChannels);
 
-    ofVideoGrabber      vidGrabber;
-    ofxVideoRecorder    vidRecorder;
-    ofSoundStream       soundStream;
+    ofVideoGrabber   vidGrabber;
+    ofxVideoRecorder vidRecorder;
+    ofSoundStream    soundStream;
     bool bRecording;
     int sampleRate;
     int channels;
-    string fileName;
-    string fileExt;
 
     void recordingComplete(ofxVideoRecorderOutputFileCompleteEventArgs& args);
 

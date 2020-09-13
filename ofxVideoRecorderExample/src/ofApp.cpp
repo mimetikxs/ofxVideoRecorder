@@ -1,25 +1,16 @@
 #include "ofApp.h"
 
 //--------------------------------------------------------------
-void ofApp::setup(){
+void ofApp::setup()
+{
     sampleRate = 44100;
     channels = 2;
 
-    ofSetFrameRate(60);
+    ofSetFrameRate(30);
     ofSetLogLevel(OF_LOG_VERBOSE);
+    vidGrabber.setDeviceID(1);
     vidGrabber.setDesiredFrameRate(30);
     vidGrabber.initGrabber(640, 480);
-//    vidRecorder.setFfmpegLocation(ofFilePath::getAbsolutePath("ffmpeg")); // use this is you have ffmpeg installed in your data folder
-
-    fileName = "testMovie";
-    fileExt = ".mov"; // ffmpeg uses the extension to determine the container type. run 'ffmpeg -formats' to see supported formats
-
-    // override the default codecs if you like
-    // run 'ffmpeg -codecs' to find out what your implementation supports (or -formats on some older versions)
-    vidRecorder.setVideoCodec("mpeg4");
-    vidRecorder.setVideoBitrate("800k");
-    vidRecorder.setAudioCodec("mp3");
-    vidRecorder.setAudioBitrate("192k");
 
     ofAddListener(vidRecorder.outputFileCompleteEvent, this, &ofApp::recordingComplete);
 
@@ -39,45 +30,49 @@ void ofApp::exit(){
 }
 
 //--------------------------------------------------------------
-void ofApp::update(){
+void ofApp::update()
+{
     vidGrabber.update();
-    if(vidGrabber.isFrameNew() && bRecording){
+    if(vidGrabber.isFrameNew() && bRecording)
+    {
         bool success = vidRecorder.addFrame(vidGrabber.getPixels());
-        if (!success) {
-            ofLogWarning("This frame was not added!");
+        if (!success) 
+        {
+            ofLogWarning(__FUNCTION__) << "This frame was not added!";
         }
     }
 
     // Check if the video recorder encountered any error while writing video frame or audio smaples.
-    if (vidRecorder.hasVideoError()) {
-        ofLogWarning("The video recorder failed to write some frames!");
+    if (vidRecorder.hasVideoError()) 
+    {
+        ofLogWarning(__FUNCTION__) << "The video recorder failed to write some frames!";
     }
-
-    if (vidRecorder.hasAudioError()) {
-        ofLogWarning("The video recorder failed to write some audio samples!");
+    if (vidRecorder.hasAudioError()) 
+    {
+        ofLogWarning(__FUNCTION__) << "The video recorder failed to write some audio samples!";
     }
 }
 
 //--------------------------------------------------------------
-void ofApp::draw(){
+void ofApp::draw()
+{
     ofSetColor(255, 255, 255);
     vidGrabber.draw(0,0);
 
-    stringstream ss;
-    ss << "video queue size: " << vidRecorder.getVideoQueueSize() << endl
-    << "audio queue size: " << vidRecorder.getAudioQueueSize() << endl
-    << "FPS: " << ofGetFrameRate() << endl
-    << (bRecording?"pause":"start") << " recording: r" << endl
-    << (bRecording?"close current video file: c":"") << endl;
+    std::ostringstream oss;
+    oss << "FPS: " << ofGetFrameRate() << std::endl
+        << (bRecording ? "pause" : "start") << " recording: r" << std::endl
+        << (bRecording ? "close current video file: c" : "");
 
     ofSetColor(0,0,0,100);
     ofDrawRectangle(0, 0, 260, 75);
     ofSetColor(255, 255, 255);
-    ofDrawBitmapString(ss.str(),15,15);
+    ofDrawBitmapString(oss.str(),15,15);
 
-    if(bRecording){
-    ofSetColor(255, 0, 0);
-    ofDrawCircle(ofGetWidth() - 20, 20, 5);
+    if (bRecording) 
+    {
+        ofSetColor(255, 0, 0);
+        ofDrawCircle(ofGetWidth() - 20, 20, 5);
     }
 }
 
@@ -88,8 +83,9 @@ void ofApp::audioIn(float *input, int bufferSize, int nChannels){
 }
 
 //--------------------------------------------------------------
-void ofApp::recordingComplete(ofxVideoRecorderOutputFileCompleteEventArgs& args){
-    cout << "The recoded video file is now complete." << endl;
+void ofApp::recordingComplete(ofxVideoRecorderOutputFileCompleteEventArgs& args)
+{
+    ofLogNotice(__FUNCTION__) << "The recorded video file is now complete.";
 }
 
 //--------------------------------------------------------------
@@ -97,27 +93,45 @@ void ofApp::keyPressed(int key){
 }
 
 //--------------------------------------------------------------
-void ofApp::keyReleased(int key){
-
-    if(key=='r'){
+void ofApp::keyReleased(int key)
+{
+    if (key == 'r')
+    {
         bRecording = !bRecording;
-        if(bRecording && !vidRecorder.isInitialized()) {
-            vidRecorder.setup(fileName+ofGetTimestampString()+fileExt, vidGrabber.getWidth(), vidGrabber.getHeight(), 30, sampleRate, channels);
-//          vidRecorder.setup(fileName+ofGetTimestampString()+fileExt, vidGrabber.getWidth(), vidGrabber.getHeight(), 30); // no audio
-//            vidRecorder.setup(fileName+ofGetTimestampString()+fileExt, 0,0,0, sampleRate, channels); // no video
-//          vidRecorder.setupCustomOutput(vidGrabber.getWidth(), vidGrabber.getHeight(), 30, sampleRate, channels, "-vcodec mpeg4 -b 1600k -acodec mp2 -ab 128k -f mpegts udp://localhost:1234"); // for custom ffmpeg output string (streaming, etc)
+        if (bRecording && !vidRecorder.isInitialized())
+        {
+            auto settings = ofxVideoRecorderSettings();
+            // use this is you have ffmpeg installed in your data folder.
+            //settings.ffmpegPath = ofFilePath::getAbsolutePath("ffmpeg");
+            settings.filename = "testMovie_" + ofGetTimestampString();
+            // ffmpeg uses the extension to determine the container type. 
+            // run 'ffmpeg -formats' to see supported formats.
+            //settings.videoFileExt = ".mov";
+            settings.videoEnabled = true;
+            settings.videoWidth = vidGrabber.getWidth();
+            settings.videoHeight = vidGrabber.getHeight();
+            settings.videoFps = 30;
+            settings.audioEnabled = false;
+            settings.audioSampleRate = sampleRate;
+            settings.audioChannels = channels;
+            // override the default codecs if you like.
+            // run 'ffmpeg -codecs' to find out what your implementation supports (or -formats on some older versions)
+            //settings.videoCodec = "libx264";
+            //settings.videoBitrate = "800k";
+            //settings.audioCodec = "mp3";
+            //settings.audioBitrate = "192k";
+            vidRecorder.setup(settings);
 
-            // Start recording
+            // Start recording!
             vidRecorder.start();
         }
-        else if(!bRecording && vidRecorder.isInitialized()) {
-            vidRecorder.setPaused(true);
-        }
-        else if(bRecording && vidRecorder.isInitialized()) {
-            vidRecorder.setPaused(false);
+        else if (vidRecorder.isInitialized())
+        {
+            vidRecorder.setPaused(!bRecording);
         }
     }
-    if(key=='c'){
+    if (key == 'c')
+    {
         bRecording = false;
         vidRecorder.close();
     }
