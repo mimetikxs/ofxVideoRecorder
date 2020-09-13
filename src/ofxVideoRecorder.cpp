@@ -291,112 +291,118 @@ void ofxAudioDataWriterThread::setPipeNonBlocking(){
 
 //--------------------------------------------------------------
 //--------------------------------------------------------------
+ofxVideoRecorderSettings::ofxVideoRecorderSettings()
+    : ffmpegPath("ffmpeg")
+    , ffmpegSilent(false)
+    , videoEnabled(true)
+    , videoWidth(640)
+    , videoHeight(480)
+    , videoFps(30)
+    , videoCodec("mpeg4")
+    , videoBitrate("2000k")
+    , pixelFormat("rgb24")
+    , outPixelFormat("")
+    , videoFileExt(".mov")
+    , audioEnabled(true)
+    , audioSampleRate(44100)
+    , audioChannels(2)
+    , audioCodec("pcm_s16le")
+    , audioBitrate("128k")
+    , audioFileExt(".wav")
+    , sysClockSync(false)
+{
+    filename = "video_" + ofGetTimestampString();
+}
+
+//--------------------------------------------------------------
+//--------------------------------------------------------------
 ofxVideoRecorder::ofxVideoRecorder(){
     bIsInitialized = false;
-    ffmpegLocation = "ffmpeg";
-    videoCodec = "mpeg4";
-    audioCodec = "pcm_s16le";
-    videoBitrate = "2000k";
-    audioBitrate = "128k";
-    pixelFormat = "rgb24";
-    outputPixelFormat = "";
-    videoFileExt = ".mp4";
-    audioFileExt = ".m4a";
+    //ffmpegLocation = "ffmpeg";
+    //videoCodec = "mpeg4";
+    //audioCodec = "pcm_s16le";
+    //videoBitrate = "2000k";
+    //audioBitrate = "128k";
+    //pixelFormat = "rgb24";
+    //outputPixelFormat = "";
+    //videoFileExt = ".mp4";
+    //audioFileExt = ".m4a";
     aThreadRunning = false;
     vThreadRunning = false;
 }
 
-ofxVideoRecorder::ofxVideoRecorder(size_t maxFrames)
-:frames(maxFrames)
-,audioFrames(maxFrames)
+bool ofxVideoRecorder::setup(std::string filename, int videoWidth, int videoHeight, float videoFps, bool sysClockSync, bool ffmpegSilent)
 {
-	bIsInitialized = false;
-	ffmpegLocation = "ffmpeg";
-	videoCodec = "mpeg4";
-	audioCodec = "pcm_s16le";
-	videoBitrate = "2000k";
-	audioBitrate = "128k";
-	pixelFormat = "rgb24";
-	outputPixelFormat = "";
+    return setup(filename, videoWidth, videoHeight, videoFps, 0, 0, sysClockSync, ffmpegSilent);
 }
 
-//--------------------------------------------------------------
-bool ofxVideoRecorder::setup(string fname, int w, int h, float fps, int sampleRate, int channels, bool sysClockSync, bool silent){
-    if(bIsInitialized)
+bool ofxVideoRecorder::setup(std::string filename, int audioSampleRate, int audioChannels, bool sysClockSync, bool ffmpegSilent)
+{
+    return setup(filename, 0, 0, 0, audioSampleRate, audioChannels, sysClockSync, ffmpegSilent);
+}
+
+bool ofxVideoRecorder::setup(std::string filename, int videoWidth, int videoHeight, float videoFps, int audioSampleRate, int audioChannels, bool sysClockSync, bool ffmpegSilent)
+{
+    auto settings = ofxVideoRecorderSettings();
+    settings.filename = filename;
+    settings.videoWidth = videoWidth;
+    settings.videoHeight = videoHeight;
+    settings.videoFps = videoFps;
+    settings.audioSampleRate = audioSampleRate;
+    settings.audioChannels = audioChannels;
+    settings.sysClockSync = sysClockSync;
+    settings.ffmpegSilent = ffmpegSilent;
+    return setup(settings);
+}
+
+bool ofxVideoRecorder::setup(ofxVideoRecorderSettings inSettings)
+{
+    settings = inSettings;
+    settings.videoEnabled &= (settings.videoWidth > 0 && settings.videoHeight > 0 && settings.videoFps > 0);
+    settings.audioEnabled &= (settings.audioSampleRate > 0 && settings.audioChannels > 0);
+
+    moviePath = ofFilePath::getAbsolutePath(settings.filename);
+
+    if (bIsInitialized)
     {
         close();
     }
 
-    fileName = fname;
-    string absFilePath = ofFilePath::getAbsolutePath(fileName);
-
-    moviePath = ofFilePath::getAbsolutePath(fileName);
-
-    stringstream outputSettings;
-	outputSettings
-	<< " -c:v " << videoCodec
-	<< " -b:v " << videoBitrate
-	<< " -c:a " << audioCodec
-	<< " -b:a " << audioBitrate
-    << " \"" << absFilePath << "\"";
-
-    return setupCustomOutput(w, h, fps, sampleRate, channels, outputSettings.str(), sysClockSync, silent);
-}
-
-//--------------------------------------------------------------
-bool ofxVideoRecorder::setupCustomOutput(int w, int h, float fps, string outputString, bool sysClockSync, bool silent){
-    return setupCustomOutput(w, h, fps, 0, 0, outputString, sysClockSync, silent);
-}
-
-//--------------------------------------------------------------
-bool ofxVideoRecorder::setupCustomOutput(int w, int h, float fps, int sampleRate, int channels, string outputString, bool sysClockSync, bool silent){
-    if(bIsInitialized)
-    {
-        close();
-    }
-
-    bIsSilent = silent;
-    bSysClockSync = sysClockSync;
-
-    bRecordAudio = (sampleRate > 0 && channels > 0);
-    bRecordVideo = (w > 0 && h > 0 && fps > 0);
     bFinishing = false;
 
     videoFramesRecorded = 0;
     audioSamplesRecorded = 0;
 
-    if(!bRecordVideo && !bRecordAudio) {
-        ofLogWarning() << "ofxVideoRecorder::setupCustomOutput(): invalid parameters, could not setup video or audio stream.\n"
-        << "video: " << w << "x" << h << "@" << fps << "fps\n"
-        << "audio: " << "channels: " << channels << " @ " << sampleRate << "Hz\n";
+    if (!settings.videoEnabled && !settings.audioEnabled) 
+    {
+        ofLogError(__FUNCTION__) << "Invalid parameters, could not setup video or audio stream!" << std::endl
+            << "video: " << settings.videoWidth << "x" << settings.videoHeight << "@" << settings.videoFps << "fps" << std::endl
+            << "audio: " << settings.audioChannels << "ch@" << settings.audioSampleRate << "Hz";
         return false;
     }
-    videoPipePath = "";
-    audioPipePath = "";
-    pipeNumber = requestPipeNumber();
-    if(bRecordVideo) {
-        width = w;
-        height = h;
-        frameRate = fps;
 
-        // recording video, create a FIFO pipe
+    pipeNumber = requestPipeNumber();
+
+    if (settings.videoEnabled)
+    {
+        // Recording video, create a FIFO pipe.
+
 #if defined(TARGET_OSX) || defined(TARGET_LINUX)
 
+        videoPipePath = "";
         videoPipePath = ofFilePath::getAbsolutePath("ofxvrpipe" + ofToString(pipeNumber));
-        if(!ofFile::doesFileExist(videoPipePath)){
+        if (!ofFile::doesFileExist(videoPipePath)) 
+        {
             string cmd = "bash --login -c 'mkfifo " + videoPipePath + "'";
             system(cmd.c_str());
         }
 
 #elif defined(TARGET_WIN32)
 
-        char vpip[128];
-        int num = ofRandom(1024);
-        sprintf(vpip, "\\\\.\\pipe\\videoPipe%d", num);
-        vPipename = vpip;
+        videoPipePath = "\\\\.\\pipe\\ofxvrpipe" + ofToString(pipeNumber);
 
-        hVPipe = CreateNamedPipe(
-            vPipename, // name of the pipe
+        videoPipeHandle = CreateNamedPipe(
+            videoPipePath.c_str(), // name of the pipe
             PIPE_ACCESS_OUTBOUND, // 1-way pipe -- send only
             PIPE_TYPE_BYTE, // send data as a byte stream
             1, // only allow 1 instance of this pipe
@@ -406,15 +412,16 @@ bool ofxVideoRecorder::setupCustomOutput(int w, int h, float fps, int sampleRate
             NULL // use default security attributes
         );
 
-        if (!(hVPipe != INVALID_HANDLE_VALUE)) {
+        if (!(videoPipeHandle != INVALID_HANDLE_VALUE))
+        {
             if (GetLastError() != ERROR_PIPE_BUSY)
             {
-                ofLogError("Video Pipe") << "Could not open video pipe.";
+                ofLogError(__FUNCTION__) << "Could not open video pipe.";
             }
             // All pipe instances are busy, so wait for 5 seconds. 
-            if (!WaitNamedPipe(vPipename, 5000))
+            if (!WaitNamedPipe(videoPipePath.c_str(), 5000))
             {
-                ofLogError("Video Pipe") << "Could not open video pipe: 5 second wait timed out.";
+                ofLogError(__FUNCTION__) << "Could not open video pipe: 5 second wait timed out.";
             }
         }
 
@@ -422,28 +429,24 @@ bool ofxVideoRecorder::setupCustomOutput(int w, int h, float fps, int sampleRate
 
     }
 
-    if(bRecordAudio) {
-        this->sampleRate = sampleRate;
-        audioChannels = channels;
-
-        // recording video, create a FIFO pipe
+    if (settings.audioEnabled) {
+        
+        // Recording audio, create a FIFO pipe.
 #if defined(TARGET_OSX) || defined(TARGET_LINUX)
 
         audioPipePath = ofFilePath::getAbsolutePath("ofxarpipe" + ofToString(pipeNumber));
-        if(!ofFile::doesFileExist(audioPipePath)){
+        if (!ofFile::doesFileExist(audioPipePath)) 
+        {
             string cmd = "bash --login -c 'mkfifo " + audioPipePath + "'";
             system(cmd.c_str());
         }
 
 #elif defined(TARGET_WIN32)
 
-        char apip[128];
-        int num = ofRandom(1024);
-        sprintf(apip, "\\\\.\\pipe\\videoPipe%d", num);
-        aPipename = apip; //convertCharArrayToLPCWSTR(apip);
+        audioPipePath = "\\\\.\\pipe\\ofxarpipe" + ofToString(pipeNumber);
 
-        hAPipe = CreateNamedPipe(
-            aPipename,
+        audioPipeHandle = CreateNamedPipe(
+            audioPipePath.c_str(),
             PIPE_ACCESS_OUTBOUND, // 1-way pipe -- send only
             PIPE_TYPE_BYTE, // send data as a byte stream
             1, // only allow 1 instance of this pipe
@@ -453,15 +456,16 @@ bool ofxVideoRecorder::setupCustomOutput(int w, int h, float fps, int sampleRate
             NULL // use default security attributes
         );
 
-        if (!(hAPipe != INVALID_HANDLE_VALUE)) {
+        if (!(audioPipeHandle != INVALID_HANDLE_VALUE))
+        {
             if (GetLastError() != ERROR_PIPE_BUSY)
             {
-                ofLogError("Audio Pipe") << "Could not open audio pipe.";
+                ofLogError(__FUNCTION__) << "Could not open audio pipe.";
             }
             // All pipe instances are busy, so wait for 5 seconds. 
-            if (!WaitNamedPipe(aPipename, 5000))
+            if (!WaitNamedPipe(audioPipePath.c_str(), 5000))
             {
-                ofLogError("Audio Pipe") << "Could not open pipe: 5 second wait timed out.";
+                ofLogError(__FUNCTION__) << "Could not open pipe: 5 second wait timed out.";
             }
         }
 
@@ -469,63 +473,82 @@ bool ofxVideoRecorder::setupCustomOutput(int w, int h, float fps, int sampleRate
 
     }
 
-    stringstream cmd;
-
 #if defined(TARGET_OSX) || defined(TARGET_LINUX)
 
-    // basic ffmpeg invocation, -y option overwrites output file
-    cmd << "bash --login -c '" << ffmpegLocation << (bIsSilent?" -loglevel quiet ":" ") << "-y";
-    if(bRecordAudio){
-        cmd << " -acodec pcm_s16le -f s16le -ar " << sampleRate << " -ac " << audioChannels << " -i \"" << audioPipePath << "\"";
+    // Basic ffmpeg invocation, -y option overwrites output file
+    std::stringstream cmd;
+    cmd << "bash --login -c '" << settings.ffmpegPath << (settings.ffmpegSilent ? " -loglevel quiet" : "") << " -y";
+    if (settings.audioEnabled)
+    {
+        cmd << " -ar " << settings.audioSampleRate << " -ac " << settings.audioChannels 
+            << " -c:a " << settings.audioCodec << " -b:a " << settings.audioBitrate
+            << " -f s16le"
+            << " -i \"" << audioPipePath << "\"";
     }
-    else { // no audio stream
+    else 
+    { 
+        // No audio stream.
         cmd << " -an";
     }
-    if(bRecordVideo){ // video input options and file
-        cmd << " -r "<< fps << " -s " << w << "x" << h << " -f rawvideo -pix_fmt " << pixelFormat <<" -i \"" << videoPipePath << "\" -r " << fps;
-        if (outputPixelFormat.length() > 0)
-            cmd << " -pix_fmt " << outputPixelFormat;
+    if (settings.videoEnabled) 
+    {
+        cmd << " -r " << settings.videoFps << " -s " << settings.videoWidth << "x" << settings.videoHeight 
+            << " -c:v " << settings.videoCodec << " -b:v " << settings.videoBitrate
+            << " -f rawvideo -pix_fmt " << settings.pixelFormat 
+            << " -i \"" << videoPipePath << "\" -r " << settings.videoFps;
+        if (!settings.outPixelFormat.empty())
+        {
+            cmd << " -pix_fmt " << settings.outPixelFormat;
+        }
     }
-    else { // no video stream
+    else 
+    { 
+        // No video stream.
         cmd << " -vn";
     }
-    cmd << " "+ outputString +"' &";
+    cmd << " \"" << moviePath << settings.videoFileExt << "\""
+        << "' &";
 
-    // start ffmpeg thread. Ffmpeg will wait for input pipes to be opened.
+    // Start ffmpeg thread, ffmpeg will wait for input pipes to be opened.
     ffmpegThread.setup(cmd.str());
 
-    // wait until ffmpeg has started
-    while (!ffmpegThread.isInitialized()) {
+    // Wait until ffmpeg has started.
+    while (!ffmpegThread.isInitialized()) 
+    {
         usleep(10);
     }
 
-    if(bRecordAudio){
+    if (settings.audioEnabled) {
         audioThread.setup(audioPipePath, &audioFrames);
     }
-    if(bRecordVideo){
+    if (settings.videoEnabled)
+    {
         videoThread.setup(videoPipePath, &frames);
     }
 
 #elif defined(TARGET_WIN32)
 
-    if (bRecordAudio && bRecordVideo) 
+    if (settings.audioEnabled && settings.videoEnabled)
     {
         bool fSuccess;
 
         // Audio Thread
 
-        stringstream aCmd;
-        aCmd << ffmpegLocation << " -y " << " -f s16le -acodec " << audioCodec << " -ar " << sampleRate << " -ac " << audioChannels;
-        aCmd << " -i " << aPipename << " -b:a " << audioBitrate << " " << moviePath << "_atemp" << audioFileExt;
+        std::stringstream aCmd;
+        aCmd << settings.ffmpegPath << (settings.ffmpegSilent ? " -loglevel quiet" : "") << " -y"
+            << " -ar " << settings.audioSampleRate << " -ac " << settings.audioChannels
+            << " -f s16le"
+            << " -i \"" << audioPipePath << "\""
+            << " -c:a " << settings.audioCodec << " -b:a " << settings.audioBitrate
+            << " \"" << moviePath << "_atmp" << settings.audioFileExt << "\"";
 
         ffmpegAudioThread.setup(aCmd.str());
-        ofLogNotice("FFMpeg Command") << aCmd.str() << endl;
+        ofLogNotice(__FUNCTION__) << "Audio command: " << aCmd.str();
 
-        fSuccess = ConnectNamedPipe(hAPipe, NULL);
+        fSuccess = ConnectNamedPipe(audioPipeHandle, NULL);
         if (!fSuccess)
         {
             LPTSTR errorText = NULL;
-
             FormatMessage(
                 // use system message tables to retrieve error text
                 FORMAT_MESSAGE_FROM_SYSTEM
@@ -541,28 +564,36 @@ bool ofxVideoRecorder::setupCustomOutput(int w, int h, float fps, int sampleRate
                 0, // minimum size for output buffer
                 NULL);   // arguments - see note 
             //wstring ws = errorText;
-            string error(errorText);
-            ofLogError("Audio Pipe") << "SetNamedPipeHandleState failed: " << error;
+            std::string error(errorText);
+            ofLogError(__FUNCTION__) << "Audio ConnectNamedPipe() failed: " << error;
         }
-        else {
-            ofLogNotice("Audio Pipe") << "\n==========================\nAudio Pipe Connected Successfully\n==========================\n" << endl;
-            audioThread.setup(hAPipe, &audioFrames);
+        else 
+        {
+            ofLogNotice(__FUNCTION__) << "Audio pipe connected successfully.";
+            audioThread.setup(audioPipeHandle, &audioFrames);
         }
 
         // Video Thread
 
-        stringstream vCmd;
-        vCmd << ffmpegLocation << " -y " << " -r " << fps << " -s " << w << "x" << h << " -f rawvideo -pix_fmt " << pixelFormat;
-        vCmd << " -i " << vPipename << " -vcodec " << videoCodec << " -b:v " << videoBitrate << " " << moviePath << "_vtemp" << videoFileExt;
+        std::stringstream vCmd;
+        vCmd << settings.ffmpegPath << (settings.ffmpegSilent ? " -loglevel quiet" : "") << " -y"
+            << " -r " << settings.videoFps << " -s " << settings.videoWidth << "x" << settings.videoHeight
+            << " -f rawvideo -pix_fmt " << settings.pixelFormat
+            << " -i \"" << videoPipePath << "\" -r " << settings.videoFps
+            << " -c:v " << settings.videoCodec << " -b:v " << settings.videoBitrate;
+        if (!settings.outPixelFormat.empty())
+        {
+            vCmd << " -pix_fmt " << settings.outPixelFormat;
+        }
+        vCmd << " \"" << moviePath << "_vtmp" << settings.videoFileExt << "\"";
 
         ffmpegVideoThread.setup(vCmd.str());
-        ofLogNotice("FFMpeg Command") << vCmd.str() << endl;
+        ofLogNotice(__FUNCTION__) << "Video command: " << vCmd.str();
 
-        fSuccess = ConnectNamedPipe(hVPipe, NULL);
+        fSuccess = ConnectNamedPipe(videoPipeHandle, NULL);
         if (!fSuccess)
         {
             LPTSTR errorText = NULL;
-
             FormatMessage(
                 // use system message tables to retrieve error text
                 FORMAT_MESSAGE_FROM_SYSTEM
@@ -579,44 +610,60 @@ bool ofxVideoRecorder::setupCustomOutput(int w, int h, float fps, int sampleRate
                 NULL);   // arguments - see note 
             //wstring ws = errorText;
             string error(errorText);
-            ofLogError("Video Pipe") << "SetNamedPipeHandleState failed: " << error;
+            ofLogError(__FUNCTION__) << "Video ConnectNamedPipe() failed: " << error;
         }
-        else {
-            ofLogNotice("Video Pipe") << "\n==========================\nVideo Pipe Connected Successfully\n==========================\n" << endl;
-            videoThread.setup(hVPipe, &frames);
+        else 
+        {
+            ofLogNotice(__FUNCTION__) << "Video pipe connected successfully.";
+            videoThread.setup(videoPipeHandle, &frames);
         }
     }
-    else {
-        cmd << ffmpegLocation << " -y ";
-        if (bRecordAudio) {
-            cmd << " -f s16le -acodec " << audioCodec << " -ar " << sampleRate << " -ac " << audioChannels << " -i " << aPipename;
+    else 
+    {
+        std::stringstream cmd;
+        cmd << settings.ffmpegPath << (settings.ffmpegSilent ? " -loglevel quiet" : "") << " -y";
+        if (settings.audioEnabled)
+        {
+            cmd << " -ar " << settings.audioSampleRate << " -ac " << settings.audioChannels
+                << " -f s16le"
+                << " -i \"" << audioPipePath << "\""
+                << " -c:a " << settings.audioCodec << " -b:a " << settings.audioBitrate;
         }
-        else { // no audio stream
+        else
+        {
+            // No audio stream.
             cmd << " -an";
         }
-        if (bRecordVideo) { // video input options and file
-            cmd << " -r " << fps << " -s " << w << "x" << h << " -f rawvideo -pix_fmt " << pixelFormat << " -i " << vPipename;
+        if (settings.videoEnabled)
+        {
+            cmd << " -r " << settings.videoFps << " -s " << settings.videoWidth << "x" << settings.videoHeight
+                << " -f rawvideo -pix_fmt " << settings.pixelFormat
+                << " -i \"" << videoPipePath << "\" -r " << settings.videoFps
+                << " -c:v " << settings.videoCodec << " -b:v " << settings.videoBitrate;
+            if (!settings.outPixelFormat.empty())
+            {
+                cmd << " -pix_fmt " << settings.outPixelFormat;
+            }
         }
-        else { // no video stream
+        else
+        {
+            // No video stream.
             cmd << " -vn";
         }
-        if (bRecordAudio)
-            cmd << " -b:a " << audioBitrate;
-        if (bRecordVideo)
-            cmd << " -vcodec " << videoCodec << " -b:v " << videoBitrate;
-        cmd << " " << outputString << videoFileExt;
+        cmd << " \"" << moviePath << settings.videoFileExt << "\"";
 
-        ofLogNotice("FFMpeg Command") << cmd.str() << endl;
+        ofLogNotice(__FUNCTION__) << "ffmpeg command: " << cmd.str();
 
-        ffmpegThread.setup(cmd.str()); // start ffmpeg thread, will wait for input pipes to be opened
+        // Start ffmpeg thread, will wait for input pipes to be opened.
+        ffmpegThread.setup(cmd.str());
 
-        if (bRecordAudio) {
-            //this blocks, so we have to call it after ffmpeg is listening for a pipe
-            bool fSuccess = ConnectNamedPipe(hAPipe, NULL);
+        if (settings.audioEnabled) 
+        {
+            // This blocks, so we have to call it after ffmpeg is listening for a pipe.
+            bool fSuccess = ConnectNamedPipe(audioPipeHandle, NULL);
             if (!fSuccess)
             {
                 LPTSTR errorText = NULL;
-
                 FormatMessage(
                     // use system message tables to retrieve error text
                     FORMAT_MESSAGE_FROM_SYSTEM
@@ -633,20 +680,22 @@ bool ofxVideoRecorder::setupCustomOutput(int w, int h, float fps, int sampleRate
                     NULL);   // arguments - see note 
                 //wstring ws = errorText;
                 string error(errorText);
-                ofLogError("Audio Pipe") << "SetNamedPipeHandleState failed: " << error;
+                ofLogError(__FUNCTION__) << "Audio ConnectNamedPipe() failed: " << error;
             }
-            else {
-                ofLogNotice("Audio Pipe") << "\n==========================\nAudio Pipe Connected Successfully\n==========================\n" << endl;
-                audioThread.setup(hAPipe, &audioFrames);
+            else
+            {
+                ofLogNotice(__FUNCTION__) << "Audio pipe connected successfully.";
+                audioThread.setup(audioPipeHandle, &audioFrames);
             }
         }
-        if (bRecordVideo) {
-            //this blocks, so we have to call it after ffmpeg is listening for a pipe
-            bool fSuccess = ConnectNamedPipe(hVPipe, NULL);
+
+        if (settings.videoEnabled)
+        {
+            // This blocks, so we have to call it after ffmpeg is listening for a pipe.
+            bool fSuccess = ConnectNamedPipe(videoPipeHandle, NULL);
             if (!fSuccess)
             {
                 LPTSTR errorText = NULL;
-
                 FormatMessage(
                     // use system message tables to retrieve error text
                     FORMAT_MESSAGE_FROM_SYSTEM
@@ -663,14 +712,14 @@ bool ofxVideoRecorder::setupCustomOutput(int w, int h, float fps, int sampleRate
                     NULL);   // arguments - see note 
                 //wstring ws = errorText;
                 string error(errorText);
-                ofLogError("Video Pipe") << "SetNamedPipeHandleState failed: " << error;
+                ofLogError(__FUNCTION__) << "Video ConnectNamedPipe() failed: " << error;
             }
-            else {
-                ofLogNotice("Video Pipe") << "\n==========================\nVideo Pipe Connected Successfully\n==========================\n" << endl;
-                videoThread.setup(hVPipe, &frames);
+            else
+            {
+                ofLogNotice(__FUNCTION__) << "Video pipe connected successfully.";
+                videoThread.setup(videoPipeHandle, &frames);
             }
         }
-
     }
 
 #endif
@@ -687,49 +736,56 @@ bool ofxVideoRecorder::setupCustomOutput(int w, int h, float fps, int sampleRate
 }
 
 //--------------------------------------------------------------
-bool ofxVideoRecorder::addFrame(const ofPixels &pixels){
+bool ofxVideoRecorder::addFrame(const ofPixels &pixels)
+{
     if (!bIsRecording || bIsPaused) return false;
 
-    if(bIsInitialized && bRecordVideo)
+    if (bIsInitialized && settings.videoEnabled)
 	{
         int framesToAdd = 1; // default add one frame per request
 
-        if((bRecordAudio || bSysClockSync) && !bFinishing){
-
+        if ((settings.audioEnabled || settings.sysClockSync) && !bFinishing)
+        {
             double syncDelta;
-            double videoRecordedTime = videoFramesRecorded / frameRate;
+            double videoRecordedTime = videoFramesRecorded / settings.videoFps;
 
-            if (bRecordAudio) {
-                // if also recording audio, check the overall recorded time for audio and video to make sure audio is not going out of sync
-                // this also handles incoming dynamic framerate while maintaining desired outgoing framerate
-                double audioRecordedTime = (audioSamplesRecorded/audioChannels)  / (double)sampleRate;
+            if (settings.audioEnabled) 
+            {
+                // If also recording audio, check the overall recorded time for audio and video to make sure audio is not going out of sync.
+                // This also handles incoming dynamic framerate while maintaining desired outgoing framerate.
+                double audioRecordedTime = (audioSamplesRecorded / settings.audioChannels)  / (double)settings.audioSampleRate;
                 syncDelta = audioRecordedTime - videoRecordedTime;
             }
-            else {
-                // if just recording video, synchronize the video against the system clock
-                // this also handles incoming dynamic framerate while maintaining desired outgoing framerate
+            else 
+            {
+                // If just recording video, synchronize the video against the system clock.
+                // This also handles incoming dynamic framerate while maintaining desired outgoing framerate.
                 syncDelta = systemClock() - videoRecordedTime;
             }
 
-            if(syncDelta > 1.0/frameRate) {
-                // not enought video frames, we need to send extra video frames.
-                while(syncDelta > 1.0/frameRate) {
-                    framesToAdd++;
-                    syncDelta -= 1.0/frameRate;
+            if (syncDelta > 1.0 / settings.videoFps)
+            {
+                // Not enough video frames, we need to add extra video frames.
+                while (syncDelta > 1.0/ settings.videoFps) 
+                {
+                    ++framesToAdd;
+                    syncDelta -= 1.0/ settings.videoFps;
                 }
-                ofLogNotice(__FUNCTION__) << "ofxVideoRecorder: recDelta = " << syncDelta << ". Not enough video frames for desired frame rate, copied this frame " << framesToAdd << " times.\n";
+                ofLogNotice(__FUNCTION__) << "recDelta = " << syncDelta << "; Not enough video frames for desired frame rate, copying current " << framesToAdd << " times.";
             }
-            else if(syncDelta < -1.0/frameRate){
-                // more than one video frame is waiting, skip this frame
+            else if (syncDelta < -1.0 / settings.videoFps) 
+            {
+                // More than one video frame is waiting, skip this frame
                 framesToAdd = 0;
-                ofLogNotice(__FUNCTION__) << "ofxVideoRecorder: recDelta = " << syncDelta << ". Too many video frames, skipping.\n";
+                ofLogNotice(__FUNCTION__) << "recDelta = " << syncDelta << "; Too many video frames, skipping current.\n";
             }
         }
 
-		for(int i=0;i<framesToAdd;i++){
-            // add desired number of frames
+        for (int i = 0; i < framesToAdd; ++i)
+        {
+            // Add desired number of frames
 			frames.send(pixels);
-            videoFramesRecorded++;
+            ++videoFramesRecorded;
 		}
 
         return true;
@@ -739,74 +795,76 @@ bool ofxVideoRecorder::addFrame(const ofPixels &pixels){
 }
 
 //--------------------------------------------------------------
-void ofxVideoRecorder::addAudioSamples(float *samples, int bufferSize, int numChannels){
+void ofxVideoRecorder::addAudioSamples(float *samples, int bufferSize, int numChannels)
+{
     if (!bIsRecording || bIsPaused) return;
 
-    if(bIsInitialized && bRecordAudio){
-        int size = bufferSize*numChannels;
-        audioFrameShort * shortSamples = new audioFrameShort;
+    if (bIsInitialized && settings.audioEnabled) 
+    {
+        int size = bufferSize * numChannels;
+        audioFrameShort* shortSamples = new audioFrameShort;
         shortSamples->data = new short[size];
         shortSamples->size = size;
 
-        for(int i=0; i < size; i++){
+        for (int i = 0; i < size; ++i) 
+        {
             shortSamples->data[i] = (short)(samples[i] * 32767.0f);
         }
-		audioFrames.send(shortSamples);
+        audioFrames.send(shortSamples);
         audioSamplesRecorded += size;
     }
 }
 
 //--------------------------------------------------------------
-void ofxVideoRecorder::start(){
+void ofxVideoRecorder::start()
+{
     if(!bIsInitialized) return;
 
-    if (bIsRecording) {
-        // We are already recording. No need to go further.
-       return;
-    }
+    if (bIsRecording) return;
 
     // Start a recording.
     bIsRecording = true;
     bIsPaused = false;
     startTime = ofGetElapsedTimef();
 
-    ofLogVerbose() << "Recording." << endl;
+    ofLogVerbose(__FUNCTION__) << "Start recording.";
 }
 
 //--------------------------------------------------------------
-void ofxVideoRecorder::setPaused(bool bPause){
+void ofxVideoRecorder::setPaused(bool bPause)
+{
     if(!bIsInitialized) return;
 
-    if (!bIsRecording || bIsPaused == bPause) {
-        //  We are not recording or we are already paused. No need to go further.
-        return;
-    }
+    if (!bIsRecording || bIsPaused == bPause) return;
 
-    // Pause the recording
+    // Pause the recording.
     bIsPaused = bPause;
 
-    if (bIsPaused) {
+    if (bIsPaused) 
+    {
         totalRecordingDuration += recordingDuration;
-
-        // Log
-        ofLogVerbose() << "Paused." << endl;
-    } else {
+        ofLogVerbose(__FUNCTION__) << "Pause recording.";
+    }
+    else
+    {
         startTime = ofGetElapsedTimef();
-
-        // Log
-        ofLogVerbose() << "Recording." << endl;
+        ofLogVerbose(__FUNCTION__) << "Unpause recording.";
     }
 }
 
 //--------------------------------------------------------------
-void ofxVideoRecorder::close(){
+void ofxVideoRecorder::close()
+{
     if(!bIsInitialized) return;
 
-	while(!frames.empty() || !audioFrames.empty()){
+    while (!frames.empty() || !audioFrames.empty())
+    {
 		ofSleepMillis(100);
 	}
 
     bIsRecording = false;
+
+    ofLogVerbose(__FUNCTION__) << "Close recording.";
 
 	outputFileComplete();
 }
@@ -821,31 +879,30 @@ void ofxVideoRecorder::outputFileComplete()
 
     bIsInitialized = false;
 
-    if (bRecordVideo) {
+    if (settings.videoEnabled)
+    {
         videoThread.close();
     }
-    if (bRecordAudio) {
+    if (settings.audioEnabled)
+    {
         audioThread.close();
     }
 
-#if defined(TARGET_OSX) || defined(TARGET_LINUX)
-
-    retirePipeNumber(pipeNumber);
-
-#elif defined(TARGET_WIN32)
+#if defined(TARGET_WIN32)
 
     //at this point all data that ffmpeg wants should have been consumed
     // one of the threads may still be trying to write a frame,
     // but once close() gets called they will exit the non_blocking write loop
     // and hopefully close successfully
 
-    if (bRecordAudio && bRecordVideo) {
+    if (settings.audioEnabled && settings.videoEnabled)
+    {
         ffmpegAudioThread.waitForThread();
         ffmpegVideoThread.waitForThread();
 
         //need to do one last script here to join the audio and video recordings
 
-        stringstream finalCmd;
+        std::stringstream mergeCmd;
 
         /*finalCmd << ffmpegLocation << " -y " << " -i " << filePath << "_vtemp" << movFileExt << " -i " << filePath << "_atemp" << movFileExt << " \\ ";
         finalCmd << "-filter_complex \"[0:0] [1:0] concat=n=2:v=1:a=1 [v] [a]\" \\";
@@ -853,31 +910,32 @@ void ofxVideoRecorder::outputFileComplete()
         finalCmd << " -vcodec " << videoCodec << " -b:v " << videoBitrate << " -b:a " << audioBitrate << " ";
         finalCmd << filePath << movFileExt;*/
 
-        finalCmd << ffmpegLocation << " -y " << " -i " << moviePath << "_vtemp" << videoFileExt << " -i " << moviePath << "_atemp" << audioFileExt << " ";
-        finalCmd << "-c:v copy -c:a copy -strict experimental ";
-        finalCmd << moviePath << videoFileExt;
+        mergeCmd << settings.ffmpegPath << (settings.ffmpegSilent ? " -loglevel quiet" : "") << " -y"
+            << " -i \"" << moviePath << "_atmp" << settings.audioFileExt << "\""
+            << " -i \"" << moviePath << "_vtmp" << settings.videoFileExt << "\""
+            << " -c:v copy -c:a copy -strict experimental "
+            << " \"" << moviePath << settings.videoFileExt << "\"";
 
-        ofLogNotice("FFMpeg Merge") << "\n==============================================\n Merge Command \n==============================================\n";
-        ofLogNotice("FFMpeg Merge") << finalCmd.str();
-        //ffmpegThread.setup(finalCmd.str());
-        system(finalCmd.str().c_str());
+        ofLogNotice(__FUNCTION__) << "merge command: " << mergeCmd.str();
 
-        //delete the unmerged files
-        stringstream removeCmd;
-        ofStringReplace(moviePath, "/", "\\");
-        removeCmd << "DEL " << moviePath << "_vtemp" << videoFileExt << " " << moviePath << "_atemp" << audioFileExt;
-        system(removeCmd.str().c_str());
+        system(mergeCmd.str().c_str());
 
+        //std::stringstream delCmd;
+        //ofStringReplace(moviePath, "/", "\\");
+        //delCmd << "DEL \"" << moviePath << "_atmp" << settings.audioFileExt << "\" \"" << moviePath << "_vtmp" << settings.videoFileExt << "\"";
+        //system(delCmd.str().c_str());
     }
 
 #endif
+
+    retirePipeNumber(pipeNumber);
 
     ffmpegThread.waitForThread();
     // TODO: kill ffmpeg process if its taking too long to close for whatever reason.
 
     // Notify the listeners.
     ofxVideoRecorderOutputFileCompleteEventArgs args;
-    args.fileName = fileName;
+    args.fileName = settings.filename;
     ofNotifyEvent(outputFileCompleteEvent, args);
 }
 
@@ -901,11 +959,13 @@ float ofxVideoRecorder::systemClock(){
 set<int> ofxVideoRecorder::openPipes;
 
 //--------------------------------------------------------------
-int ofxVideoRecorder::requestPipeNumber(){
+int ofxVideoRecorder::requestPipeNumber()
+{
     int n = 0;
-    while (openPipes.find(n) != openPipes.end()) {
-        n++;
-    }
+    do
+    {
+        n = ofRandom(1024);
+    } while (openPipes.find(n) != openPipes.end());
     openPipes.insert(n);
     return n;
 }

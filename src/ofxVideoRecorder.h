@@ -90,19 +90,57 @@ public:
     string fileName;
 };
 
+struct ofxVideoRecorderSettings 
+{
+public:
+    std::string ffmpegPath;
+    bool ffmpegSilent;
+
+    bool videoEnabled;
+    int videoWidth;
+    int videoHeight;
+    int videoFps;
+    std::string videoCodec;
+    std::string videoBitrate;
+    std::string pixelFormat;  // 'rgb24' or 'gray', default is 'rgb24'
+    std::string outPixelFormat;
+    std::string videoFileExt;
+
+    bool audioEnabled;
+    int audioSampleRate;
+    int audioChannels;
+    std::string audioCodec;
+    std::string audioBitrate;
+    std::string audioFileExt;
+
+    bool sysClockSync;
+
+    std::string filename;
+
+public:
+    ofxVideoRecorderSettings();
+
+private:
+    friend class ofxVideoRecorder;
+};
+
 //--------------------------------------------------------------
 //--------------------------------------------------------------
 class ofxVideoRecorder
 {
 public:
 	ofxVideoRecorder();
-	ofxVideoRecorder(size_t maxFrames);
 
     ofEvent<ofxVideoRecorderOutputFileCompleteEventArgs> outputFileCompleteEvent;
 
-    bool setup(string fname, int w, int h, float fps, int sampleRate=0, int channels=0, bool sysClockSync=false, bool silent=false);
-    bool setupCustomOutput(int w, int h, float fps, string outputString, bool sysClockSync=false, bool silent=false);
-    bool setupCustomOutput(int w, int h, float fps, int sampleRate, int channels, string outputString, bool sysClockSync=false, bool silent=false);
+    bool setup(std::string filename, int videoWidth, int videoHeight, float videoFps, bool sysClockSync = false, bool ffmpegSilent = false);
+    bool setup(std::string filename, int audioSampleRate, int audioChannels, bool sysClockSync = false, bool ffmpegSilent = false);
+    bool setup(std::string filename, int videoWidth, int videoHeight, float videoFps, int audioSampleRate, int audioChannels, bool sysClockSync = false, bool ffmpegSilent = false);
+    bool setup(ofxVideoRecorderSettings settings = ofxVideoRecorderSettings());
+
+    //bool setup(string fname, int w, int h, float fps, int sampleRate=0, int channels=0, bool sysClockSync=false, bool silent=false);
+    //bool setupCustomOutput(int w, int h, float fps, string outputString, bool sysClockSync=false, bool silent=false);
+    //bool setupCustomOutput(int w, int h, float fps, int sampleRate, int channels, string outputString, bool sysClockSync=false, bool silent=false);
 
     bool addFrame(const ofPixels &pixels);
     void addAudioSamples(float * samples, int bufferSize, int numChannels);
@@ -114,18 +152,18 @@ public:
     bool hasVideoError();
     bool hasAudioError();
 
-    void setFfmpegLocation(string loc) { ffmpegLocation = loc; }
-    void setVideoCodec(string codec) { videoCodec = codec; }
-    void setAudioCodec(string codec) { audioCodec = codec; }
-    void setVideoBitrate(string bitrate) { videoBitrate = bitrate; }
-    void setAudioBitrate(string bitrate) { audioBitrate = bitrate; }
+    //void setFfmpegLocation(string loc) { ffmpegLocation = loc; }
+    //void setVideoCodec(string codec) { videoCodec = codec; }
+    //void setAudioCodec(string codec) { audioCodec = codec; }
+    //void setVideoBitrate(string bitrate) { videoBitrate = bitrate; }
+    //void setAudioBitrate(string bitrate) { audioBitrate = bitrate; }
 
-    void setPixelFormat( string pixelF){ //rgb24 || gray, default is rgb24
-        pixelFormat = pixelF;
-    };
-    void setOutputPixelFormat(string pixelF) {
-        outputPixelFormat = pixelF;
-    }
+    //void setPixelFormat( string pixelF){ //rgb24 || gray, default is rgb24
+    //    pixelFormat = pixelF;
+    //};
+    //void setOutputPixelFormat(string pixelF) {
+    //    outputPixelFormat = pixelF;
+    //}
 
     unsigned long long getNumVideoFramesRecorded() { return videoFramesRecorded; }
     unsigned long long getNumAudioSamplesRecorded() { return audioSamplesRecorded; }
@@ -136,23 +174,25 @@ public:
     bool isSyncAgainstSysClock() { return bSysClockSync; };
 
     string getMoviePath(){ return moviePath; }
-    int getWidth(){return width;}
-    int getHeight(){return height;}
+    int getWidth(){return settings.videoWidth;}
+    int getHeight(){return settings.videoHeight;}
 
 private:
-    string fileName;
+    ofxVideoRecorderSettings settings;
+
+    //string fileName;
     string moviePath;
-    string videoFileExt;
-    string audioFileExt;
+    //string videoFileExt;
+    //string audioFileExt;
     string videoPipePath, audioPipePath;
-    string ffmpegLocation;
-    string videoCodec, audioCodec, videoBitrate, audioBitrate, pixelFormat, outputPixelFormat;
-    int width, height, sampleRate, audioChannels;
-    float frameRate;
+    //string ffmpegLocation;
+    //string videoCodec, audioCodec, videoBitrate, audioBitrate, pixelFormat, outputPixelFormat;
+    //int width, height, sampleRate, audioChannels;
+    //float frameRate;
 
     bool bIsInitialized;
-    bool bRecordAudio;
-    bool bRecordVideo;
+    //bool bRecordAudio;
+    //bool bRecordVideo;
     bool bIsRecording;
     bool bIsPaused;
     bool bFinishing;
@@ -183,7 +223,8 @@ private:
 
     void outputFileComplete();
 
-#ifdef TARGET_WIN32
+#if defined(TARGET_WIN32)
+
     std::wstring convertNarrowToWide(const std::string& as)
     {
         if (as.empty())    return std::wstring();
@@ -210,9 +251,11 @@ private:
         return stm.str();
     }
 
-    HANDLE hVPipe;
-    HANDLE hAPipe;
-    LPTSTR vPipename;
-    LPTSTR aPipename;
+    HANDLE videoPipeHandle;
+    HANDLE audioPipeHandle;
+    //LPCTSTR videoPipePath;
+    //LPCTSTR audioPipePath;
+
 #endif
+
 };
