@@ -3,13 +3,6 @@
 #include "ofMain.h"
 #include <set>
 
-#ifdef TARGET_WIN32
-#include <windows.h> 
-#include <stdio.h>
-#include <conio.h>
-#include <tchar.h>
-#endif
-
 class execThread : public ofThread{
 public:
     execThread();
