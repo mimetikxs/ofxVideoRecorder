@@ -7,6 +7,7 @@
 //
 
 #include "ofxVideoRecorder.h"
+
 #if defined( TARGET_OSX ) || defined( TARGET_LINUX )
 #include <unistd.h>
 #endif
@@ -18,6 +19,8 @@
 #include <tchar.h>
 #endif
 #include <fcntl.h>
+
+#include "ofLog.h"
 
 //--------------------------------------------------------------
 //--------------------------------------------------------------
@@ -48,7 +51,7 @@ execThread::execThread(){
 }
 
 //--------------------------------------------------------------
-void execThread::setup(string command){
+void execThread::setup(const std::string& command){
     execCommand = command;
     initialized = false;
 	startThread();
@@ -135,7 +138,7 @@ void ofxVideoDataWriterThread::threadedFunction()
                     (LPTSTR)&errorText,  // output 
                     0, // minimum size for output buffer
                     NULL);   // arguments - see note 
-                string error(errorText);
+                std::string error(errorText);
                 ofLogError(__FUNCTION__) << "WriteFile to pipe failed: " << error;
                 break;
             }
@@ -247,7 +250,7 @@ void ofxAudioDataWriterThread::threadedFunction()
                     (LPTSTR)&errorText,  // output 
                     0, // minimum size for output buffer
                     NULL);   // arguments - see note 
-                string error(errorText);
+                std::string error(errorText);
                 ofLogNotice("Audio Thread") << "WriteFile to pipe failed: " << error;
             }
 #endif
@@ -605,7 +608,7 @@ bool ofxVideoRecorder::setup(ofxVideoRecorderSettings inSettings)
                 (LPTSTR)&errorText,  // output 
                 0, // minimum size for output buffer
                 NULL);   // arguments - see note 
-            string error(errorText);
+            std::string error(errorText);
             ofLogError(__FUNCTION__) << "Video ConnectNamedPipe() failed: " << error;
         }
         else 
@@ -674,7 +677,7 @@ bool ofxVideoRecorder::setup(ofxVideoRecorderSettings inSettings)
                     (LPTSTR)&errorText,  // output 
                     0, // minimum size for output buffer
                     NULL);   // arguments - see note 
-                string error(errorText);
+                std::string error(errorText);
                 ofLogError(__FUNCTION__) << "Audio ConnectNamedPipe() failed: " << error;
             }
             else
@@ -705,7 +708,7 @@ bool ofxVideoRecorder::setup(ofxVideoRecorderSettings inSettings)
                     (LPTSTR)&errorText,  // output 
                     0, // minimum size for output buffer
                     NULL);   // arguments - see note 
-                string error(errorText);
+                std::string error(errorText);
                 ofLogError(__FUNCTION__) << "Video ConnectNamedPipe() failed: " << error;
             }
             else
@@ -942,7 +945,7 @@ float ofxVideoRecorder::systemClock(){
 }
 
 //--------------------------------------------------------------
-set<int> ofxVideoRecorder::openPipes;
+std::set<int> ofxVideoRecorder::openPipes;
 
 //--------------------------------------------------------------
 int ofxVideoRecorder::requestPipeNumber()

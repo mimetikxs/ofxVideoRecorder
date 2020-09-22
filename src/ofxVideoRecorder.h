@@ -1,16 +1,20 @@
 #pragma once
 
-#include "ofMain.h"
 #include <set>
+
+#include "ofEvents.h"
+#include "ofPixels.h"
+#include "ofThread.h"
+#include "ofThreadChannel.h"
 
 class execThread : public ofThread{
 public:
     execThread();
-    void setup(string command);
+    void setup(const std::string& command);
     void threadedFunction();
     bool isInitialized() { return initialized; }
 private:
-    string execCommand;
+    std::string execCommand;
     bool initialized;
 };
 
@@ -35,7 +39,7 @@ public:
 	void close() { bClose = true; queue->close(); stopThread(); waitForThread(); }
     bool bNotifyError;
 private:
-    string filePath;
+    std::string filePath;
 #if defined(TARGET_WIN32)
     HANDLE videoHandle;
     HANDLE fileHandle;
@@ -62,7 +66,7 @@ public:
 	void close() { bClose = true; queue->close(); stopThread(); waitForThread();  }
     bool bNotifyError;
 private:
-    string filePath;
+    std::string filePath;
 #if defined(TARGET_WIN32)
     HANDLE audioHandle;
     HANDLE fileHandle;
@@ -80,7 +84,7 @@ class ofxVideoRecorderOutputFileCompleteEventArgs
 : public ofEventArgs
 {
 public:
-    string fileName;
+    std::string fileName;
 };
 
 struct ofxVideoRecorderSettings 
@@ -183,7 +187,7 @@ private:
     int videoPipeFd, audioPipeFd;
     int pipeNumber;
 
-    static set<int> openPipes;
+    static std::set<int> openPipes;
     static int requestPipeNumber();
     static void retirePipeNumber(int num);
 
