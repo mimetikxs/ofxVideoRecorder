@@ -744,7 +744,7 @@ bool ofxVideoRecorder::addFrame(const ofPixels &pixels)
         if ((settings.audioEnabled || settings.sysClockSync))
         {
             double syncDelta;
-            double videoRecordedTime = videoFramesRecorded / settings.videoFps;
+            double videoRecordedTime = videoFramesRecorded / (double)settings.videoFps;
 
             if (settings.audioEnabled) 
             {
