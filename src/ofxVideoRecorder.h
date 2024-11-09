@@ -30,14 +30,14 @@ class ofxVideoDataWriterThread : public ofThread {
 public:
     ofxVideoDataWriterThread();
 #if defined(TARGET_OSX) || defined(TARGET_LINUX)
-	void setup(std::string filePath, std::shared_ptr<ofThreadChannel<ofPixels>> q);
+    void setup(std::string filePath, std::shared_ptr<ofThreadChannel<ofPixels>> q);
 #elif defined(TARGET_WIN32)
     void setup(HANDLE pipeHandle, std::shared_ptr<ofThreadChannel<ofPixels>> q);
 #endif
-	void threadedFunction();
+    void threadedFunction();
     void setPipeNonBlocking();
     bool isWriting() { return bIsWriting; }
-	void close() { bClose = true; queue->close(); stopThread(); waitForThread(); }
+    void close() { bClose = true; queue->close(); stopThread(); waitForThread(); }
     bool bNotifyError;
 private:
     std::string filePath;
@@ -61,10 +61,10 @@ public:
 #elif defined(TARGET_WIN32)
     void setup(HANDLE pipeHandle, std::shared_ptr<ofThreadChannel<audioFrameShort *>> q);
 #endif
-	void threadedFunction();
+    void threadedFunction();
     void setPipeNonBlocking();
     bool isWriting() { return bIsWriting; }
-	void close() { bClose = true; queue->close(); stopThread(); waitForThread();  }
+    void close() { bClose = true; queue->close(); stopThread(); waitForThread();  }
     bool bNotifyError;
 private:
     std::string filePath;
@@ -127,7 +127,7 @@ private:
 class ofxVideoRecorder
 {
 public:
-	ofxVideoRecorder();
+    ofxVideoRecorder();
 
     ofEvent<ofxVideoRecorderOutputFileCompleteEventArgs> outputFileCompleteEvent;
 

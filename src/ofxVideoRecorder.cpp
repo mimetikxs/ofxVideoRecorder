@@ -26,21 +26,21 @@
 //--------------------------------------------------------------
 int setNonBlocking(int fd){
 #if defined( TARGET_OSX ) || defined( TARGET_LINUX )
-	int flags;
+    int flags;
 
-	/* If they have O_NONBLOCK, use the Posix way to do it */
+    /* If they have O_NONBLOCK, use the Posix way to do it */
 #if defined(O_NONBLOCK)
-	/* Fixme: O_NONBLOCK is defined but broken on SunOS 4.1.x and AIX 3.2.5. */
-	if (-1 == (flags = fcntl(fd, F_GETFL, 0)))
-		flags = 0;
-	return fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+    /* Fixme: O_NONBLOCK is defined but broken on SunOS 4.1.x and AIX 3.2.5. */
+    if (-1 == (flags = fcntl(fd, F_GETFL, 0)))
+        flags = 0;
+    return fcntl(fd, F_SETFL, flags | O_NONBLOCK);
 #else
-	/* Otherwise, use the old way of doing it */
-	flags = 1;
-	return ioctl(fd, FIOBIO, &flags);
+    /* Otherwise, use the old way of doing it */
+    flags = 1;
+    return ioctl(fd, FIOBIO, &flags);
 #endif
 #endif
-	return 0;
+    return 0;
 }
 
 //--------------------------------------------------------------
@@ -54,7 +54,7 @@ execThread::execThread(){
 void execThread::setup(const std::string& command){
     execCommand = command;
     initialized = false;
-	startThread();
+    startThread();
 }
 
 //--------------------------------------------------------------
@@ -93,7 +93,7 @@ void ofxVideoDataWriterThread::setup(HANDLE pipeHandle, std::shared_ptr<ofThread
     bIsWriting = false;
     bClose = false;
     bNotifyError = false;
-	startThread();
+    startThread();
 }
 
 //--------------------------------------------------------------
@@ -107,17 +107,17 @@ void ofxVideoDataWriterThread::threadedFunction()
     }
 #endif
 
-	ofPixels frame;
-	while(queue->receive(frame)){
-		bIsWriting = true;
-		int b_offset = 0;
-		int b_remaining = frame.getWidth()*frame.getHeight()*frame.getBytesPerPixel();
+    ofPixels frame;
+    while(queue->receive(frame)){
+        bIsWriting = true;
+        int b_offset = 0;
+        int b_remaining = frame.getWidth()*frame.getHeight()*frame.getBytesPerPixel();
 
-		while(b_remaining > 0 && isThreadRunning())
-		{
+        while(b_remaining > 0 && isThreadRunning())
+        {
 #if defined(TARGET_OSX) || defined(TARGET_LINUX)
-			errno = 0;
-			int b_written = ::write(fd, ((char *)frame.getData())+b_offset, b_remaining);
+            errno = 0;
+            int b_written = ::write(fd, ((char *)frame.getData())+b_offset, b_remaining);
 #elif defined(TARGET_WIN32)
             DWORD b_written;
             if (!WriteFile(videoHandle, ((char *)frame.getData()) + b_offset, b_remaining, &b_written, 0)) 
@@ -144,33 +144,33 @@ void ofxVideoDataWriterThread::threadedFunction()
             }
 #endif
 
-			if(b_written > 0){
-				b_remaining -= b_written;
-				b_offset += b_written;
-				if (b_remaining != 0) {
-					ofLogWarning("ofxVideoDataWriterThread") << ofGetTimestampString("%H:%M:%S:%i") << " - b_remaining is not 0 -> " << b_written << " - " << b_remaining << " - " << b_offset << ".";
-					// break;
-				}
-			}
-			else if (b_written < 0) {
-				ofLogError("ofxVideoDataWriterThread") << ofGetTimestampString("%H:%M:%S:%i") << " - write to PIPE failed with error -> " << errno << " - " << strerror(errno) << ".";
-				bNotifyError = true;
-				break;
-			}
-			else {
-				if(bClose){
-					ofLogVerbose("ofxVideoDataWriterThread") << ofGetTimestampString("%H:%M:%S:%i") << " - Nothing was written and bClose is TRUE.";
-					break; // quit writing so we can close the file
-				}
-				ofLogWarning("ofxVideoDataWriterThread") << ofGetTimestampString("%H:%M:%S:%i") << " - Nothing was written. Is this normal?";
-			}
+            if(b_written > 0){
+                b_remaining -= b_written;
+                b_offset += b_written;
+                if (b_remaining != 0) {
+                    ofLogWarning("ofxVideoDataWriterThread") << ofGetTimestampString("%H:%M:%S:%i") << " - b_remaining is not 0 -> " << b_written << " - " << b_remaining << " - " << b_offset << ".";
+                    // break;
+                }
+            }
+            else if (b_written < 0) {
+                ofLogError("ofxVideoDataWriterThread") << ofGetTimestampString("%H:%M:%S:%i") << " - write to PIPE failed with error -> " << errno << " - " << strerror(errno) << ".";
+                bNotifyError = true;
+                break;
+            }
+            else {
+                if(bClose){
+                    ofLogVerbose("ofxVideoDataWriterThread") << ofGetTimestampString("%H:%M:%S:%i") << " - Nothing was written and bClose is TRUE.";
+                    break; // quit writing so we can close the file
+                }
+                ofLogWarning("ofxVideoDataWriterThread") << ofGetTimestampString("%H:%M:%S:%i") << " - Nothing was written. Is this normal?";
+            }
 
-			if (!isThreadRunning()) {
-				ofLogWarning("ofxVideoDataWriterThread") << ofGetTimestampString("%H:%M:%S:%i") << " - The thread is not running anymore let's get out of here!";
-			}
-		}
-		bIsWriting = false;
-	}
+            if (!isThreadRunning()) {
+                ofLogWarning("ofxVideoDataWriterThread") << ofGetTimestampString("%H:%M:%S:%i") << " - The thread is not running anymore let's get out of here!";
+            }
+        }
+        bIsWriting = false;
+    }
 
     ofLogVerbose("ofxVideoDataWriterThread") << "closing pipe: " <<  filePath;
 #if defined(TARGET_OSX) || defined(TARGET_LINUX)
@@ -208,7 +208,7 @@ void ofxAudioDataWriterThread::setup(HANDLE pipeHandle, std::shared_ptr<ofThread
     queue = q;
     bIsWriting = false;
     bNotifyError = false;
-	startThread();
+    startThread();
 }
 
 //--------------------------------------------------------------
@@ -222,14 +222,14 @@ void ofxAudioDataWriterThread::threadedFunction()
     }
 #endif
 
-	audioFrameShort * frame = NULL;
-	while(queue->receive(frame) && frame){
-		bIsWriting = true;
-		int b_offset = 0;
-		int b_remaining = frame->size*sizeof(short);
-		while(b_remaining > 0 && isThreadRunning()){
+    audioFrameShort * frame = NULL;
+    while(queue->receive(frame) && frame){
+        bIsWriting = true;
+        int b_offset = 0;
+        int b_remaining = frame->size*sizeof(short);
+        while(b_remaining > 0 && isThreadRunning()){
 #if defined(TARGET_OSX) || defined(TARGET_LINUX)
-			int b_written = ::write(fd, ((char *)frame->data)+b_offset, b_remaining);
+            int b_written = ::write(fd, ((char *)frame->data)+b_offset, b_remaining);
 #elif defined(TARGET_WIN32)
             DWORD b_written;
             if (!WriteFile(audioHandle, ((char*)frame->data) + b_offset, b_remaining, &b_written, 0)) 
@@ -254,30 +254,30 @@ void ofxAudioDataWriterThread::threadedFunction()
                 ofLogNotice("Audio Thread") << "WriteFile to pipe failed: " << error;
             }
 #endif
-			if(b_written > 0){
-				b_remaining -= b_written;
-				b_offset += b_written;
-			}
-			else if (b_written < 0) {
-				ofLogError("ofxAudioDataWriterThread") << ofGetTimestampString("%H:%M:%S:%i") << " - write to PIPE failed with error -> " << errno << " - " << strerror(errno) << ".";
-				bNotifyError = true;
-				break;
-			}
-			else {
-				if(bClose){
-					// quit writing so we can close the file
-					break;
-				}
-			}
+            if(b_written > 0){
+                b_remaining -= b_written;
+                b_offset += b_written;
+            }
+            else if (b_written < 0) {
+                ofLogError("ofxAudioDataWriterThread") << ofGetTimestampString("%H:%M:%S:%i") << " - write to PIPE failed with error -> " << errno << " - " << strerror(errno) << ".";
+                bNotifyError = true;
+                break;
+            }
+            else {
+                if(bClose){
+                    // quit writing so we can close the file
+                    break;
+                }
+            }
 
-			if (!isThreadRunning()) {
-				ofLogWarning("ofxAudioDataWriterThread") << ofGetTimestampString("%H:%M:%S:%i") << " - The thread is not running anymore let's get out of here!";
-			}
-		}
-		bIsWriting = false;
-		delete [] frame->data;
-		delete frame;
-	}
+            if (!isThreadRunning()) {
+                ofLogWarning("ofxAudioDataWriterThread") << ofGetTimestampString("%H:%M:%S:%i") << " - The thread is not running anymore let's get out of here!";
+            }
+        }
+        bIsWriting = false;
+        delete [] frame->data;
+        delete frame;
+    }
 
     ofLogVerbose("ofxAudioDataWriterThread") << "closing pipe: " <<  filePath;
 #if defined(TARGET_OSX) || defined(TARGET_LINUX)
@@ -744,7 +744,7 @@ bool ofxVideoRecorder::addFrame(const ofPixels &pixels)
     if (!bIsRecording || bIsPaused) return false;
 
     if (bIsInitialized && settings.videoEnabled)
-	{
+    {
         int framesToAdd = 1; // default add one frame per request
 
         if ((settings.audioEnabled || settings.sysClockSync))
@@ -787,9 +787,9 @@ bool ofxVideoRecorder::addFrame(const ofPixels &pixels)
         for (int i = 0; i < framesToAdd; ++i)
         {
             // Add desired number of frames
-			videoFrames->send(pixels);
+            videoFrames->send(pixels);
             ++videoFramesRecorded;
-		}
+        }
 
         return true;
     }
@@ -885,12 +885,12 @@ void ofxVideoRecorder::close()
     while ((settings.videoEnabled && !videoFrames->empty()) 
         || (settings.audioEnabled && !audioFrames->empty()))
     {
-		ofSleepMillis(100);
-	}
+        ofSleepMillis(100);
+    }
 
     ofLogVerbose(__FUNCTION__) << "Close recording.";
 
-	outputFileComplete();
+    outputFileComplete();
 }
 
 //--------------------------------------------------------------
