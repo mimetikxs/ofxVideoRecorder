@@ -29,7 +29,7 @@ class ofxVideoDataWriterThread : public ofThread {
 public:
     ofxVideoDataWriterThread();
 #if defined(TARGET_OSX) || defined(TARGET_LINUX)
-	void setup(string filePath, std::shared_ptr<ofThreadChannel<ofPixels>> q);
+	void setup(std::string filePath, std::shared_ptr<ofThreadChannel<ofPixels>> q);
 #elif defined(TARGET_WIN32)
     void setup(HANDLE pipeHandle, std::shared_ptr<ofThreadChannel<ofPixels>> q);
 #endif
@@ -56,7 +56,7 @@ class ofxAudioDataWriterThread : public ofThread {
 public:
     ofxAudioDataWriterThread();
 #if defined(TARGET_OSX) || defined(TARGET_LINUX)
-    void setup(string filePath, std::shared_ptr<ofThreadChannel<audioFrameShort *>> q);
+    void setup(std::string filePath, std::shared_ptr<ofThreadChannel<audioFrameShort *>> q);
 #elif defined(TARGET_WIN32)
     void setup(HANDLE pipeHandle, std::shared_ptr<ofThreadChannel<audioFrameShort *>> q);
 #endif

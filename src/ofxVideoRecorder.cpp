@@ -78,7 +78,7 @@ ofxVideoDataWriterThread::ofxVideoDataWriterThread(){
 
 //--------------------------------------------------------------
 #if defined(TARGET_OSX) || defined(TARGET_LINUX)
-void ofxVideoDataWriterThread::setup(string filePath, std::shared_ptr<ofThreadChannel<ofPixels>> q)
+void ofxVideoDataWriterThread::setup(std::string filePath, std::shared_ptr<ofThreadChannel<ofPixels>> q)
 #elif defined(TARGET_WIN32)
 void ofxVideoDataWriterThread::setup(HANDLE pipeHandle, std::shared_ptr<ofThreadChannel<ofPixels>> q)
 #endif
@@ -194,7 +194,7 @@ ofxAudioDataWriterThread::ofxAudioDataWriterThread(){
 
 //--------------------------------------------------------------
 #if defined(TARGET_OSX) || defined(TARGET_LINUX)
-void ofxAudioDataWriterThread::setup(string filePath, std::shared_ptr<ofThreadChannel<audioFrameShort*>> q)
+void ofxAudioDataWriterThread::setup(std::string filePath, std::shared_ptr<ofThreadChannel<audioFrameShort*>> q)
 #elif defined(TARGET_WIN32)
 void ofxAudioDataWriterThread::setup(HANDLE pipeHandle, std::shared_ptr<ofThreadChannel<audioFrameShort*>> q)
 #endif
@@ -391,7 +391,7 @@ bool ofxVideoRecorder::setup(ofxVideoRecorderSettings inSettings)
         videoPipePath = ofFilePath::getAbsolutePath("ofxvrpipe" + ofToString(pipeNumber));
         if (!ofFile::doesFileExist(videoPipePath)) 
         {
-            string cmd = "bash --login -c 'mkfifo " + videoPipePath + "'";
+            std::string cmd = "bash --login -c 'mkfifo " + videoPipePath + "'";
             system(cmd.c_str());
         }
 
@@ -438,7 +438,7 @@ bool ofxVideoRecorder::setup(ofxVideoRecorderSettings inSettings)
         audioPipePath = ofFilePath::getAbsolutePath("ofxarpipe" + ofToString(pipeNumber));
         if (!ofFile::doesFileExist(audioPipePath)) 
         {
-            string cmd = "bash --login -c 'mkfifo " + audioPipePath + "'";
+            std::string cmd = "bash --login -c 'mkfifo " + audioPipePath + "'";
             system(cmd.c_str());
         }
 
@@ -493,7 +493,7 @@ bool ofxVideoRecorder::setup(ofxVideoRecorderSettings inSettings)
     }
     if (settings.videoEnabled) 
     {
-        cmd << " -r " << settings.videoFps << " -s " << settings.videoWidth << "x" << settings.videoHeight 
+        cmd << " -r " << settings.videoFps << " -s " << settings.videoWidth << "x" << settings.videoHeight             
             << " -c:v " << settings.videoCodec << " -b:v " << settings.videoBitrate
             << " -f rawvideo -pix_fmt " << settings.pixelFormat 
             << " -i \"" << videoPipePath << "\" -r " << settings.videoFps;
