@@ -520,11 +520,11 @@ bool ofxVideoRecorder::setup(ofxVideoRecorderSettings inSettings)
     }
 
     if (settings.audioEnabled) {
-        audioThread.setup(audioPipePath, &audioFrames);
+        audioThread.setup(audioPipePath, audioFrames);
     }
     if (settings.videoEnabled)
     {
-        videoThread.setup(videoPipePath, &frames);
+        videoThread.setup(videoPipePath, videoFrames);
     }
 
 #elif defined(TARGET_WIN32)
