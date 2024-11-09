@@ -6,6 +6,7 @@
 #include "ofPixels.h"
 #include "ofThread.h"
 #include "ofThreadChannel.h"
+#include "ofSoundBuffer.h"
 
 class execThread : public ofThread{
 public:
@@ -137,6 +138,7 @@ public:
 
     bool addFrame(const ofPixels &pixels);
     void addAudioSamples(float * samples, int bufferSize, int numChannels);
+    void addAudioSamples(ofSoundBuffer& buffer);
 
     void start();
     void close();
