@@ -482,8 +482,8 @@ bool ofxVideoRecorder::setup(ofxVideoRecorderSettings inSettings)
     if (settings.audioEnabled)
     {
         cmd << " -ar " << settings.audioSampleRate << " -ac " << settings.audioChannels 
-            << " -c:a " << settings.audioCodec << " -b:a " << settings.audioBitrate
             << " -f s16le"
+            << " -thread_queue_size 1024"
             << " -i \"" << audioPipePath << "\"";
     }
     else 
@@ -493,13 +493,19 @@ bool ofxVideoRecorder::setup(ofxVideoRecorderSettings inSettings)
     }
     if (settings.videoEnabled) 
     {
-        cmd << " -r " << settings.videoFps << " -s " << settings.videoWidth << "x" << settings.videoHeight             
-            << " -c:v " << settings.videoCodec << " -b:v " << settings.videoBitrate
-            << " -f rawvideo -pix_fmt " << settings.pixelFormat 
-            << " -i \"" << videoPipePath << "\" -r " << settings.videoFps;
+        cmd << " -r " << settings.videoFps << " -s " << settings.videoWidth << "x" << settings.videoHeight
+            << " -f rawvideo -pix_fmt " << settings.pixelFormat
+            << " -thread_queue_size 1024"
+            << " -i \"" << videoPipePath << "\" -r " << settings.videoFps
+            << " -c:v " << settings.videoCodec << " -b:v " << settings.videoBitrate;
         if (!settings.outPixelFormat.empty())
         {
             cmd << " -pix_fmt " << settings.outPixelFormat;
+        }
+        // NOTE: Audio ouput options must be placed after inputs are defined
+        if (settings.audioEnabled)
+        {
+            cmd << " -c:a " << settings.audioCodec << " -b:a " << settings.audioBitrate << " -ac " << settings.audioChannels;
         }
     }
     else 
