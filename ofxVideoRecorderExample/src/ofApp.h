@@ -3,6 +3,13 @@
 #include "ofMain.h"
 #include "ofxVideoRecorder.h"
 
+// 
+// https://stackoverflow.com/questions/51903888/is-it-possible-to-send-ffmpeg-images-by-using-pipe
+// https://rmauro.dev/how-to-record-video-and-audio-with-ffmpeg-a-minimalist-approach/
+// https://stackoverflow.com/questions/63762351/ffmpeg-raw-video-and-audio-stdin
+// https://askubuntu.com/questions/803925/using-ffmpeg-to-encode-from-yuv-to-m4v-with-mpeg-4-encoder
+// 
+
 class ofApp : public ofBaseApp{
 
 public:
@@ -10,21 +17,12 @@ public:
     void update();
     void draw();
     void exit();
-
-    void keyPressed  (int key);
     void keyReleased(int key);
-    void mouseMoved(int x, int y );
-    void mouseDragged(int x, int y, int button);
-    void mousePressed(int x, int y, int button);
-    void mouseReleased(int x, int y, int button);
-    void windowResized(int w, int h);
-    void dragEvent(ofDragInfo dragInfo);
-    void gotMessage(ofMessage msg);
-    void audioIn(float * input, int bufferSize, int nChannels);
+    void audioIn(ofSoundBuffer& buffer);
 
-    ofVideoGrabber   vidGrabber;
+    ofVideoGrabber vidGrabber;
+    ofSoundStream soundStream;
     ofxVideoRecorder vidRecorder;
-    ofSoundStream    soundStream;
     bool bRecording;
     int sampleRate;
     int channels;

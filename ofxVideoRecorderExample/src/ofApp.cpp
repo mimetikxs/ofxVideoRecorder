@@ -6,19 +6,29 @@ void ofApp::setup()
     sampleRate = 44100;
     channels = 2;
 
-    ofSetFrameRate(30);
-    ofSetLogLevel(OF_LOG_VERBOSE);
-    vidGrabber.setDeviceID(1);
+    ofSetFrameRate(60);
+    // ofSetLogLevel(OF_LOG_VERBOSE);
+
+    // vidGrabber.setDeviceID(1);
     vidGrabber.setDesiredFrameRate(30);
-    vidGrabber.initGrabber(640, 480);
+    vidGrabber.setup(640, 480);
 
     ofAddListener(vidRecorder.outputFileCompleteEvent, this, &ofApp::recordingComplete);
 
-//    soundStream.listDevices();
-//    soundStream.setDeviceID(11);
-    soundStream.setup(this, 0, channels, sampleRate, 256, 4);
+    string audioDeviceName = "HD Pro Webcam C920";
+    auto devices = soundStream.getMatchingDevices(audioDeviceName);
+    if (devices.empty()) {
+        ofLogError("App::setup") << "Audio device \"" << audioDeviceName << "\" not found";
+    }
+    ofSoundStreamSettings settings;
+    settings.setInDevice(devices[0]);
+    settings.setInListener(this);
+    settings.sampleRate = sampleRate;
+    settings.numOutputChannels = 0;
+    settings.numInputChannels = channels;
+    soundStream.setup(settings);
 
-    ofSetWindowShape(vidGrabber.getWidth(), vidGrabber.getHeight()	);
+    ofSetWindowShape(vidGrabber.getWidth(), vidGrabber.getHeight());
     bRecording = false;
     ofEnableAlphaBlending();
 }
@@ -33,7 +43,7 @@ void ofApp::exit(){
 void ofApp::update()
 {
     vidGrabber.update();
-    if(vidGrabber.isFrameNew() && bRecording)
+    if (vidGrabber.isFrameNew() && bRecording) 
     {
         bool success = vidRecorder.addFrame(vidGrabber.getPixels());
         if (!success) 
@@ -77,19 +87,16 @@ void ofApp::draw()
 }
 
 //--------------------------------------------------------------
-void ofApp::audioIn(float *input, int bufferSize, int nChannels){
+void ofApp::audioIn(ofSoundBuffer& buffer)
+{
     if(bRecording)
-        vidRecorder.addAudioSamples(input, bufferSize, nChannels);
+        vidRecorder.addAudioSamples(buffer);
 }
 
 //--------------------------------------------------------------
 void ofApp::recordingComplete(ofxVideoRecorderOutputFileCompleteEventArgs& args)
 {
     ofLogNotice(__FUNCTION__) << "The recorded video file is now complete.";
-}
-
-//--------------------------------------------------------------
-void ofApp::keyPressed(int key){
 }
 
 //--------------------------------------------------------------
@@ -111,15 +118,21 @@ void ofApp::keyReleased(int key)
             settings.videoWidth = vidGrabber.getWidth();
             settings.videoHeight = vidGrabber.getHeight();
             settings.videoFps = 30;
-            settings.audioEnabled = false;
+            settings.audioEnabled = true;
             settings.audioSampleRate = sampleRate;
             settings.audioChannels = channels;
             // override the default codecs if you like.
             // run 'ffmpeg -codecs' to find out what your implementation supports (or -formats on some older versions)
-            //settings.videoCodec = "libx264";
+            // settings.videoCodec = "libx264";
             //settings.videoBitrate = "800k";
             //settings.audioCodec = "mp3";
             //settings.audioBitrate = "192k";
+
+            // Sysclock sync keeps output fps consistent even with variable input framerate.
+            // This is needed if ofApp framerate is faster than the recording framerate.
+            // When recording audio, this setting is ignored.
+            settings.sysClockSync = true;
+
             vidRecorder.setup(settings);
 
             // Start recording!
@@ -135,39 +148,4 @@ void ofApp::keyReleased(int key)
         bRecording = false;
         vidRecorder.close();
     }
-}
-
-//--------------------------------------------------------------
-void ofApp::mouseMoved(int x, int y ){
-
-}
-
-//--------------------------------------------------------------
-void ofApp::mouseDragged(int x, int y, int button){
-
-}
-
-//--------------------------------------------------------------
-void ofApp::mousePressed(int x, int y, int button){
-
-}
-
-//--------------------------------------------------------------
-void ofApp::mouseReleased(int x, int y, int button){
-
-}
-
-//--------------------------------------------------------------
-void ofApp::windowResized(int w, int h){
-
-}
-
-//--------------------------------------------------------------
-void ofApp::gotMessage(ofMessage msg){
-
-}
-
-//--------------------------------------------------------------
-void ofApp::dragEvent(ofDragInfo dragInfo){
-
 }
