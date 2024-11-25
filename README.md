@@ -1,5 +1,11 @@
 # ofxVideoRecorder
 
+```
+NOTE: 
+The develop branch works in Ubuntu 24. 
+Recording synced audio and video works.
+```
+
 ### a fast multi-threaded video recording extension using ffmpeg.
 
 Multi-threaded design allows your app to run at full speed while worker threads pipe video and/or audio data to an instance of ffmpeg. If both audio and video recording is enabled, A/V synchronization is maintained by dynamically adding or skipping frames of video when needed to match the pace of the incoming audio stream; This feature compensates for inconsistent incoming frame-rates (from a camera which adjusts shutter-speed in low light for example) and produces a stable output frame-rate with no synchronization problems.
