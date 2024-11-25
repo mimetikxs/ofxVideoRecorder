@@ -4,6 +4,9 @@
 NOTE: 
 The develop branch works in Ubuntu 24. 
 Recording synced audio and video works.
+
+TODO:
+Consolidate changes and merge delop into main.
 ```
 
 ### a fast multi-threaded video recording extension using ffmpeg.
